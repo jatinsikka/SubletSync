@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Post a Listing — SubletSync</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+  <style>
+    :root{
+      --bg:#faf7f2;--surface:#fff;--surface-alt:#f3ede3;
+      --accent:#BF5700;--accent-dark:#8B3A00;--accent-light:rgba(191,87,0,0.08);
+      --accent3:#5a8a4f;--text:#1a1510;--muted:#8a7d6b;
+      --border:rgba(191,87,0,0.15);--border-solid:#d4c0a8;
+      --font-d:'Cormorant Garamond',Georgia,serif;
+      --font-b:'Plus Jakarta Sans',-apple-system,sans-serif;
+      --r:12px;
+      --sh:0 4px 20px rgba(26,21,16,0.08),0 1px 4px rgba(26,21,16,0.04);
+      --sh-lg:0 24px 64px rgba(26,21,16,0.11),0 8px 24px rgba(26,21,16,0.05);
+      --max:1140px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text)}
+
+    /* ── Auth wall ── */
+    .auth-wall{max-width:460px;margin:80px auto;text-align:center;padding:0 24px}
+    .auth-wall-icon{font-size:54px;margin-bottom:20px}
+    .auth-wall h2{font-family:var(--font-d);font-size:2rem;color:var(--text);margin-bottom:10px}
+    .auth-wall p{color:var(--muted);font-size:15px;margin-bottom:28px;line-height:1.65}
+    .auth-wall-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .auth-wall-btns a{padding:12px 24px;border-radius:var(--r);font-family:var(--font-b);font-size:14px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s}
+    .btn-primary-link{background:var(--accent);color:#fff;border:none}
+    .btn-primary-link:hover{background:var(--accent-dark);transform:translateY(-1px)}
+    .btn-ghost-link{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+    .btn-ghost-link:hover{background:var(--accent-light)}
+
+    /* ── Progress header ── */
+    .progress-wrap{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 24px;position:sticky;top:68px;z-index:80;box-shadow:0 2px 6px rgba(26,21,16,0.04)}
+    .progress-inner{max-width:700px;margin:0 auto}
+    .step-track{display:flex;align-items:center;margin-bottom:10px}
+    .step-dot{width:30px;height:30px;border-radius:50%;border:2px solid var(--border-solid);background:var(--surface-alt);display:flex;align-items:center;justify-content:center;font-family:var(--font-b);font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0;position:relative;z-index:1;transition:all 0.3s}
+    .step-dot.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 4px var(--accent-light)}
+    .step-dot.done{background:var(--accent3);border-color:var(--accent3);color:#fff}
+    .step-connector{flex:1;height:2px;background:var(--border-solid);transition:background 0.3s}
+    .step-connector.done{background:var(--accent3)}
+    .step-labels{display:flex;justify-content:space-between;margin-top:4px}
+    .step-lbl{flex:1;text-align:center;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;transition:color 0.2s}
+    .step-lbl.active{color:var(--accent)}
+    .step-lbl.done{color:var(--accent3)}
+    /* Progress bar */
+    .prog-bar-wrap{height:3px;background:var(--surface-alt);border-radius:2px;margin-top:10px;overflow:hidden}
+    .prog-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s ease}
+
+    /* ── Form area ── */
+    .form-area{max-width:700px;margin:0 auto;padding:36px 24px 90px}
+    .step-page{display:none}
+    .step-page.active{display:block;animation:fadeIn 0.28s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+    .step-badge{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+    .step-heading{font-family:var(--font-d);font-size:clamp(1.5rem,3vw,2.1rem);font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.2}
+    .step-sub{font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+
+    .form-group{margin-bottom:18px}
+    .form-label{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px}
+    .form-label span{font-weight:400;color:var(--muted);font-size:12px}
+    .form-input{width:100%;padding:11px 14px;border:1.5px solid var(--border-solid);border-radius:var(--r);font-family:var(--font-b);font-size:15px;color:var(--text);background:#fff;outline:none;transition:border-color 0.2s,box-shadow 0.2s}
+    .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+    .form-input::placeholder{color:var(--muted)}
+    .form-input.has-error{border-color:#c41d2e}
+    textarea.form-input{resize:vertical;min-height:120px;line-height:1.65}
+    select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a7d6b' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;cursor:pointer}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+    @media(max-width:560px){.form-row,.form-row-3{grid-template-columns:1fr}}
+    .char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:4px}
+    .char-count.warn{color:var(--accent)}
+
+    /* Toggle switch */
+    .toggle-row{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surface-alt);border-radius:var(--r);cursor:pointer;transition:background 0.2s;border:1.5px solid transparent}
+    .toggle-row:hover{background:#ece5d9}
+    .toggle-row.on{border-color:var(--accent3);background:rgba(90,138,79,0.06)}
+    .toggle-switch{width:44px;height:24px;border-radius:12px;background:var(--border-solid);position:relative;transition:background 0.2s;flex-shrink:0}
+    .toggle-switch.on{background:var(--accent3)}
+    .toggle-switch::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.18)}
+    .toggle-switch.on::after{left:23px}
+    .toggle-text{font-size:14px;font-weight:600;color:var(--text)}
+    .toggle-sub{font-size:12px;color:var(--muted);margin-top:1px}
+
+    /* Radio type selector */
+    .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .type-card{padding:14px 16px;border:2px solid var(--border-solid);border-radius:var(--r);cursor:pointer;transition:all 0.2s}
+    .type-card:hover{border-color:var(--accent);background:var(--accent-light)}
+    .type-card.selected{border-color:var(--accent);background:var(--accent-light)}
+    .type-card h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px}
+    .type-card p{font-size:12px;color:var(--muted);line-height:1.45}
+
+    /* Photo upload */
+    .drop-zone{position:relative;border:2px dashed var(--border-solid);border-radius:var(--r);padding:36px 24px;text-align:center;cursor:pointer;transition:all 0.22s;background:#fff;overflow:hidden}
+    .drop-zone:hover,.drop-zone.dragging{border-color:var(--accent);background:var(--accent-light)}
+    .drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .drop-zone-icon{font-size:36px;margin-bottom:10px;line-height:1}
+    .drop-zone-text{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+    .drop-zone-sub{font-size:13px;color:var(--muted)}
+    .photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+    .photo-item{position:relative;height:86px;border-radius:8px;overflow:hidden;background:var(--surface-alt)}
+    .photo-item img{width:100%;height:100%;object-fit:cover}
+    .photo-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.65);color:#fff;border:none;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.18s;line-height:1}
+    .photo-del:hover{background:rgba(196,29,46,0.88)}
+    .photo-main-badge{position:absolute;bottom:4px;left:4px;background:var(--accent);color:#fff;font-size:9px;font-weight:700;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:0.04em}
+    @media(max-width:480px){.photo-grid{grid-template-columns:repeat(3,1fr)}}
+
+    /* Amenities checkboxes */
+    .amenity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:8px}
+    .amenity-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--border-solid);border-radius:8px;cursor:pointer;transition:all 0.18s;user-select:none}
+    .amenity-item:hover{border-color:var(--accent);background:var(--accent-light)}
+    .amenity-item.checked{border-color:var(--accent3);background:rgba(90,138,79,0.07)}
+    .amenity-check-icon{font-size:17px;flex-shrink:0;line-height:1}
+    .amenity-check-mark{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border-solid);margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all 0.18s}
+    .amenity-item.checked .amenity-check-mark{background:var(--accent3);border-color:var(--accent3);color:#fff}
+
+    /* Review step */
+    .review-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px}
+    .review-block-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:var(--surface-alt)}
+    .review-block-title{font-family:var(--font-d);font-size:1.1rem;font-weight:600;color:var(--text)}
+    .review-edit-btn{font-size:12px;font-weight:700;color:var(--accent);cursor:pointer;background:none;border:none;padding:4px 10px;border-radius:6px;transition:background 0.18s}
+    .review-edit-btn:hover{background:var(--accent-light)}
+    .review-body{padding:16px 18px}
+    .review-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    @media(max-width:480px){.review-grid{grid-template-columns:1fr}}
+    .review-item label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px}
+    .review-item value{display:block;font-size:14px;font-weight:500;color:var(--text)}
+    .review-photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
+    .review-photo{height:64px;border-radius:6px;overflow:hidden;background:var(--surface-alt)}
+    .review-photo img{width:100%;height:100%;object-fit:cover}
+    .review-amenity-tags{display:flex;flex-wrap:wrap;gap:6px}
+    .review-amenity-tag{padding:3px 10px;background:var(--accent-light);color:var(--accent);border-radius:20px;font-size:12px;font-weight:600}
+
+    /* Terms */
+    .terms-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:var(--surface-alt);border-radius:var(--r);margin-bottom:20px;cursor:pointer;border:1.5px solid transparent;transition:border-color 0.18s}
+    .terms-row.accepted{border-color:var(--accent3)}
+    .terms-box{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--border-solid);flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.18s}
+    .terms-box.on{background:var(--accent3);border-color:var(--accent3);color:#fff}
+    .terms-text{font-size:13px;color:var(--muted);line-height:1.65}
+    .terms-text a{color:var(--accent);text-decoration:none;font-weight:600}
+
+    /* Nav buttons */
+    .form-nav{display:flex;gap:12px;align-items:center;padding-top:6px}
+    .btn-continue{flex:1;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-b);font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-continue:hover{background:var(--accent-dark);transform:translateY(-1px)}
+    .btn-continue:disabled{background:var(--muted);cursor:not-allowed;transform:none}
+    .btn-back{padding:14px 20px;background:transparent;color:var(--muted);border:1.5px solid var(--border-solid);border-radius:var(--r);font-family:var(--font-b);font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s}
+    .btn-back:hover{border-color:var(--accent);color:var(--accent)}
+
+    /* Error */
+    .step-error{background:rgba(196,29,46,0.07);border:1px solid rgba(196,29,46,0.2);color:#c41d2e;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
+    .step-error.show{display:block}
+
+    /* Spinner */
+    .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    @media(max-width:768px){
+      .progress-wrap{top:60px}
+      .form-area{padding:24px 16px 80px}
+    }
+  </style>
+</head>
+<body>
+<div id="nav"></div>
+
+<!-- ── Auth wall ── -->
+<div id="auth-wall" style="display:none">
+  <div class="auth-wall">
+    <div class="auth-wall-icon">🔐</div>
+    <h2>Sign in to post a listing</h2>
+    <p>Create a free SubletSync account to post your sublease and reach verified students looking for exactly what you have.</p>
+    <div class="auth-wall-btns">
+      <a href="auth.html" class="btn-ghost-link">Sign in</a>
+      <a href="auth.html?mode=signup" class="btn-primary-link">Create free account</a>
+    </div>
+  </div>
+</div>
+
+<!-- ── Multi-step form ── -->
+<div id="post-wrap" style="display:none">
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-inner">
+      <div class="step-track">
+        <div class="step-dot active" id="dot-1">1</div>
+        <div class="step-connector" id="con-1"></div>
+        <div class="step-dot" id="dot-2">2</div>
+        <div class="step-connector" id="con-2"></div>
+        <div class="step-dot" id="dot-3">3</div>
+        <div class="step-connector" id="con-3"></div>
+        <div class="step-dot" id="dot-4">4</div>
+      </div>
+      <div class="step-labels">
+        <div class="step-lbl active" id="lbl-1">Basics</div>
+        <div class="step-lbl" id="lbl-2">Details</div>
+        <div class="step-lbl" id="lbl-3">Photos</div>
+        <div class="step-lbl" id="lbl-4">Review</div>
+      </div>
+      <div class="prog-bar-wrap">
+        <div class="prog-bar-fill" id="prog-fill" style="width:12.5%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-area">
+
+    <!-- ── STEP 1: Basics ── -->
+    <div class="step-page active" id="step-1">
+      <div class="step-badge">Step 1 of 4</div>
+      <div class="step-heading">Tell us about the place</div>
+      <div class="step-sub">Basic details about your sublease listing</div>
+      <div class="step-error" id="err-1"></div>
+
+      <div class="form-group">
+        <label class="form-label" for="f-title">Listing title <span>max 80 chars</span></label>
+        <input type="text" id="f-title" class="form-input" placeholder="e.g. Bright 1BR Near UT Campus — Fully Furnished" maxlength="80" autocomplete="off"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="f-address">Street address</label>
+        <input type="text" id="f-address" class="form-input" placeholder="e.g. 801 W 24th St, Apt 4B" autocomplete="street-address"/>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-city">City</label>
+          <input type="text" id="f-city" class="form-input" placeholder="Austin" autocomplete="address-level2"/>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-state">State</label>
+          <input type="text" id="f-state" class="form-input" placeholder="TX" maxlength="2" style="text-transform:uppercase" autocomplete="address-level1"/>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:18px">
+        <label class="form-label" for="f-price">Monthly rent ($)</label>
+        <input type="number" id="f-price" class="form-input" placeholder="1,200" min="1" max="99999" step="25"/>
+      </div>
+
+      <div class="form-row-3">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-beds">Bedrooms</label>
+          <select id="f-beds" class="form-input">
+            <option value="0">Studio</option>
+            <option value="1" selected>1 Bed</option>
+            <option value="2">2 Beds</option>
+            <option value="3">3 Beds</option>
+            <option value="4">4+ Beds</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-baths">Bathrooms</label>
+          <select id="f-baths" class="form-input">
+            <option value="1" selected>1 Bath</option>
+            <option value="1.5">1.5 Baths</option>
+            <option value="2">2 Baths</option>
+            <option value="3">3 Baths</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-sqft">Sqft <span>optional</span></label>
+          <input type="number" id="f-sqft" class="form-input" placeholder="750" min="50" max="9999"/>
+        </div>
+      </div>
+
+      <div class="form-nav" style="margin-top:28px">
+        <button class="btn-continue" onclick="nextStep(1)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 2: Details ── -->
+    <div class="step-page" id="step-2">
+      <div class="step-badge">Step 2 of 4</div>
+      <div class="step-heading">Availability & details</div>
+      <div class="step-sub">When is the unit available and what's included?</div>
+      <div class="step-error" id="err-2"></div>
+
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-from">Available from</label>
+          <input type="date" id="f-from" class="form-input"/>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" for="f-to">Available to</label>
+          <input type="date" id="f-to" class="form-input"/>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:18px">
+        <label class="form-label">Sublease type</label>
+        <div class="type-grid">
+          <div class="type-card selected" id="rc-unit" onclick="selectType('whole_unit',this)">
+            <h4>🏠 Whole unit</h4>
+            <p>Subtenant gets the entire apartment or house</p>
+          </div>
+          <div class="type-card" id="rc-room" onclick="selectType('private_room',this)">
+            <h4>🛏️ Private room</h4>
+            <p>Shared with other roommates already in the unit</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="toggle-row" id="furnished-row" onclick="toggleFurnished()">
+          <div class="toggle-switch on" id="furnished-switch"></div>
+          <div>
+            <div class="toggle-text">Furnished</div>
+            <div class="toggle-sub">Unit includes furniture, bed, basic kitchen items</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="f-desc">
+          Description
+          <span id="char-count-lbl">0 / 2000</span>
+        </label>
+        <textarea id="f-desc" class="form-input" rows="6"
+          placeholder="Describe the space, neighborhood, what's included, lease transfer process, any rules…"
+          maxlength="2000" oninput="updateCharCount(this)"></textarea>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn-back" onclick="goStep(1)">← Back</button>
+        <button class="btn-continue" onclick="nextStep(2)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 3: Photos & Amenities ── -->
+    <div class="step-page" id="step-3">
+      <div class="step-badge">Step 3 of 4</div>
+      <div class="step-heading">Photos & amenities</div>
+      <div class="step-sub">Show off the space and highlight what makes it great</div>
+
+      <div class="form-group">
+        <label class="form-label">Photos <span>optional · up to 8 · JPG/PNG/WEBP</span></label>
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/gif" multiple
+                 onchange="addPhotos(this.files)"/>
+          <div class="drop-zone-icon">📸</div>
+          <div class="drop-zone-text">Drag & drop photos here</div>
+          <div class="drop-zone-sub">or click to browse · max 8 photos · 5 MB each</div>
+        </div>
+        <div class="photo-grid" id="photo-previews"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amenities <span>select all that apply</span></label>
+        <div class="amenity-grid" id="amenity-grid">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn-back" onclick="goStep(2)">← Back</button>
+        <button class="btn-continue" onclick="nextStep(3)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ── STEP 4: Review ── -->
+    <div class="step-page" id="step-4">
+      <div class="step-badge">Step 4 of 4</div>
+      <div class="step-heading">Review & publish</div>
+      <div class="step-sub">Double-check everything before your listing goes live</div>
+      <div class="step-error" id="err-4"></div>
+
+      <div class="review-block">
+        <div class="review-block-head">
+          <span class="review-block-title">Basics</span>
+          <button class="review-edit-btn" onclick="goStep(1)">Edit</button>
+        </div>
+        <div class="review-body">
+          <div class="review-grid" id="rev-basics"></div>
+        </div>
+      </div>
+
+      <div class="review-block">
+        <div class="review-block-head">
+          <span class="review-block-title">Availability</span>
+          <button class="review-edit-btn" onclick="goStep(2)">Edit</button>
+        </div>
+        <div class="review-body">
+          <div class="review-grid" id="rev-details"></div>
+        </div>
+      </div>
+
+      <div class="review-block">
+        <div class="review-block-head">
+          <span class="review-block-title">Photos & Amenities</span>
+          <button class="review-edit-btn" onclick="goStep(3)">Edit</button>
+        </div>
+        <div class="review-body" id="rev-photos-amen"></div>
+      </div>
+
+      <div class="terms-row" id="terms-row" onclick="toggleTerms()">
+        <div class="terms-box" id="terms-box"></div>
+        <div class="terms-text">
+          I confirm this listing is accurate and I have the legal right to sublease this unit. I agree to
+          <a href="#" onclick="event.stopPropagation()">SubletSync's Terms of Service</a> and
+          <a href="#" onclick="event.stopPropagation()">Community Guidelines</a>.
+        </div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn-back" onclick="goStep(3)">← Back</button>
+        <button class="btn-continue" id="publish-btn" onclick="publishListing()">🚀 Publish listing</button>
+      </div>
+    </div>
+
+  </div><!-- /form-area -->
+</div><!-- /post-wrap -->
+
+<script>
+/* ── State ── */
+let currentStep   = 1;
+let subleaseType  = 'whole_unit';
+let isFurnished   = true;
+let termsAccepted = false;
+let photoFiles    = [];   // File objects
+let photoURLs     = [];   // Object URLs for preview
+let selectedAmenities = [];
+
+const AMENITY_LIST = [
+  ['WiFi',             '📶'],
+  ['Parking',          '🚗'],
+  ['Pet-friendly',     '🐾'],
+  ['In-unit W/D',      '🧺'],
+  ['AC',               '❄️'],
+  ['Pool',             '🏊'],
+  ['Gym',              '🏋️'],
+  ['Furnished',        '🛋️'],
+  ['Utilities Included','💡'],
+  ['Rooftop',          '🌇'],
+];
+
+/* ── Init ── */
+async function init() {
+  await renderNav('post');
+  const user = await Auth.getUser();
+
+  if (!user) {
+    document.getElementById('auth-wall').style.display = 'block';
+    return;
+  }
+  document.getElementById('post-wrap').style.display = 'block';
+
+  // Default dates: starts ~30 days from now, 90-day window
+  const today = new Date();
+  const from  = new Date(today); from.setDate(from.getDate() + 30);
+  const to    = new Date(from);  to.setDate(to.getDate() + 90);
+  document.getElementById('f-from').value = toISO(from);
+  document.getElementById('f-to').value   = toISO(to);
+
+  // Pre-check Furnished in amenity grid since it starts ON
+  renderAmenityGrid();
+
+  // Auto-select Furnished amenity since furnished toggle starts on
+  markAmenityChecked('Furnished', true);
+}
+
+function toISO(d) { return d.toISOString().split('T')[0]; }
+
+/* ── Amenity grid ── */
+function renderAmenityGrid() {
+  const grid = document.getElementById('amenity-grid');
+  grid.innerHTML = AMENITY_LIST.map(([name, icon]) => `
+    <div class="amenity-item" data-amenity="${name}" onclick="toggleAmenity(this)">
+      <span class="amenity-check-icon">${icon}</span>
+      <span style="font-size:13px;font-weight:500;flex:1">${name}</span>
+      <span class="amenity-check-mark"></span>
+    </div>`).join('');
+}
+
+function toggleAmenity(el) {
+  const name = el.dataset.amenity;
+  const checked = el.classList.toggle('checked');
+  el.querySelector('.amenity-check-mark').textContent = checked ? '✓' : '';
+  if (checked) {
+    if (!selectedAmenities.includes(name)) selectedAmenities.push(name);
+  } else {
+    selectedAmenities = selectedAmenities.filter(a => a !== name);
+  }
+}
+
+function markAmenityChecked(name, state) {
+  const el = document.querySelector(`.amenity-item[data-amenity="${name}"]`);
+  if (!el) return;
+  if (state && !el.classList.contains('checked')) {
+    el.classList.add('checked');
+    el.querySelector('.amenity-check-mark').textContent = '✓';
+    if (!selectedAmenities.includes(name)) selectedAmenities.push(name);
+  } else if (!state && el.classList.contains('checked')) {
+    el.classList.remove('checked');
+    el.querySelector('.amenity-check-mark').textContent = '';
+    selectedAmenities = selectedAmenities.filter(a => a !== name);
+  }
+}
+
+/* ── Step navigation ── */
+function nextStep(from) {
+  if (!validateStep(from)) return;
+  if (from === 3) buildReview();
+  goStep(from + 1);
+}
+
+function goStep(n) {
+  document.getElementById('step-' + currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step-' + n).classList.add('active');
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateProgress() {
+  const pct = { 1: 12.5, 2: 37.5, 3: 62.5, 4: 87.5 };
+  document.getElementById('prog-fill').style.width = pct[currentStep] + '%';
+
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById('dot-' + i);
+    const lbl = document.getElementById('lbl-' + i);
+    const con = document.getElementById('con-' + i);
+    const done   = i < currentStep;
+    const active = i === currentStep;
+    dot.className = 'step-dot' + (active ? ' active' : done ? ' done' : '');
+    dot.textContent = done ? '✓' : String(i);
+    lbl.className = 'step-lbl' + (active ? ' active' : done ? ' done' : '');
+    if (con) con.className = 'step-connector' + (done ? ' done' : '');
+  }
+}
+
+/* ── Validation ── */
+function validateStep(n) {
+  const errEl = document.getElementById('err-' + n);
+  if (errEl) errEl.classList.remove('show');
+
+  const showErr = (msg) => {
+    if (errEl) { errEl.textContent = msg; errEl.classList.add('show'); errEl.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+    return false;
+  };
+  const v = (id) => (document.getElementById(id)?.value || '').trim();
+
+  if (n === 1) {
+    if (!v('f-title'))   return showErr('Please enter a listing title.');
+    if (v('f-title').length < 10) return showErr('Title should be at least 10 characters.');
+    if (!v('f-address')) return showErr('Please enter the street address.');
+    if (!v('f-city'))    return showErr('Please enter the city.');
+    if (!v('f-state'))   return showErr('Please enter the 2-letter state code.');
+    if (!v('f-price') || Number(v('f-price')) <= 0) return showErr('Please enter a valid monthly price.');
+  }
+
+  if (n === 2) {
+    if (!v('f-from')) return showErr('Please select an "available from" date.');
+    if (!v('f-to'))   return showErr('Please select an "available to" date.');
+    if (v('f-from') >= v('f-to')) return showErr('"Available to" must be after "available from".');
+    if (v('f-desc').length < 30)  return showErr('Please write a description (at least 30 characters).');
+  }
+
+  return true;
+}
+
+/* ── Sublease type ── */
+function selectType(type, el) {
+  subleaseType = type;
+  document.getElementById('rc-unit').classList.toggle('selected', type === 'whole_unit');
+  document.getElementById('rc-room').classList.toggle('selected', type === 'private_room');
+}
+
+/* ── Furnished toggle ── */
+function toggleFurnished() {
+  isFurnished = !isFurnished;
+  document.getElementById('furnished-switch').classList.toggle('on', isFurnished);
+  document.getElementById('furnished-row').classList.toggle('on', isFurnished);
+  markAmenityChecked('Furnished', isFurnished);
+}
+
+/* ── Char count ── */
+function updateCharCount(ta) {
+  const lbl = document.getElementById('char-count-lbl');
+  const len = ta.value.length;
+  lbl.textContent = len + ' / 2000';
+  lbl.className = len > 1800 ? 'warn' : '';
+}
+
+/* ── Photos ── */
+function addPhotos(files) {
+  const remaining = 8 - photoFiles.length;
+  Array.from(files).slice(0, remaining).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    if (f.size > 5 * 1024 * 1024) { alert(`"${f.name}" is over 5 MB — please compress it first.`); return; }
+    photoFiles.push(f);
+    photoURLs.push(URL.createObjectURL(f));
+  });
+  renderPhotoPreviews();
+}
+
+function renderPhotoPreviews() {
+  const container = document.getElementById('photo-previews');
+  container.innerHTML = photoURLs.map((url, i) => `
+    <div class="photo-item">
+      <img src="${url}" alt="Photo ${i+1}" loading="lazy"/>
+      ${i === 0 ? '<span class="photo-main-badge">Cover</span>' : ''}
+      <button class="photo-del" onclick="removePhoto(${i})" title="Remove photo">✕</button>
+    </div>`).join('');
+}
+
+function removePhoto(i) {
+  URL.revokeObjectURL(photoURLs[i]);
+  photoFiles.splice(i, 1);
+  photoURLs.splice(i, 1);
+  renderPhotoPreviews();
+}
+
+// Drag-and-drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('dragging'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('dragging'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragging');
+  addPhotos(e.dataTransfer.files);
+});
+
+/* ── Build review ── */
+function buildReview() {
+  const v   = (id) => document.getElementById(id)?.value || '';
+  const beds = { '0':'Studio','1':'1 Bed','2':'2 Beds','3':'3 Beds','4':'4+ Beds' };
+
+  document.getElementById('rev-basics').innerHTML = [
+    ['Title',     v('f-title')],
+    ['Address',   v('f-address') + ', ' + v('f-city') + ', ' + v('f-state')],
+    ['Price',     formatPrice(v('f-price')) + '/mo'],
+    ['Bedrooms',  beds[v('f-beds')] || v('f-beds')],
+    ['Bathrooms', v('f-baths') + ' Bath'],
+    ['Sqft',      v('f-sqft') ? v('f-sqft') + ' ft²' : '—'],
+  ].map(([l,val]) => `<div class="review-item"><label>${l}</label><value>${escapeHtml(String(val))}</value></div>`).join('');
+
+  document.getElementById('rev-details').innerHTML = [
+    ['Available from', formatDate(v('f-from'))],
+    ['Available to',   formatDate(v('f-to'))],
+    ['Duration',       monthsDiff(v('f-from'), v('f-to')) + ' months'],
+    ['Type',           subleaseType === 'whole_unit' ? 'Whole Unit' : 'Private Room'],
+    ['Furnished',      isFurnished ? 'Yes' : 'No'],
+  ].map(([l,val]) => `<div class="review-item"><label>${l}</label><value>${escapeHtml(String(val))}</value></div>`).join('');
+
+  const photoHtml = photoURLs.length
+    ? `<div class="review-photo-grid">${photoURLs.map(u => `<div class="review-photo"><img src="${u}" loading="lazy"/></div>`).join('')}</div>`
+    : `<p style="font-size:13px;color:var(--muted);margin-bottom:12px">No photos added — you can add them later.</p>`;
+
+  const amenHtml = selectedAmenities.length
+    ? `<div class="review-amenity-tags">${selectedAmenities.map(a => `<span class="review-amenity-tag">${escapeHtml(a)}</span>`).join('')}</div>`
+    : `<p style="font-size:13px;color:var(--muted)">No amenities selected</p>`;
+
+  document.getElementById('rev-photos-amen').innerHTML = photoHtml + amenHtml;
+}
+
+/* ── Terms ── */
+function toggleTerms() {
+  termsAccepted = !termsAccepted;
+  document.getElementById('terms-box').classList.toggle('on', termsAccepted);
+  document.getElementById('terms-box').textContent = termsAccepted ? '✓' : '';
+  document.getElementById('terms-row').classList.toggle('accepted', termsAccepted);
+}
+
+/* ── Publish ── */
+async function publishListing() {
+  const errEl = document.getElementById('err-4');
+  errEl.classList.remove('show');
+
+  if (!termsAccepted) {
+    errEl.textContent = 'Please read and accept the terms to publish.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const btn = document.getElementById('publish-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Publishing…';
+
+  const v = (id) => (document.getElementById(id)?.value || '').trim();
+
+  // Upload photos if Supabase is connected
+  let uploadedPhotos = [];
+  if (getSupabase() && photoFiles.length) {
+    for (const f of photoFiles) {
+      const { url } = await Listings.uploadImage(f);
+      if (url) uploadedPhotos.push(url);
+    }
+  }
+  // In demo mode, photos stay as blob URLs (won't persist across page loads, that's okay for demo)
+
+  const listing = {
+    title:          v('f-title'),
+    address:        v('f-address'),
+    city:           v('f-city'),
+    state:          v('f-state').toUpperCase().slice(0,2),
+    price:          Number(v('f-price')),
+    bedrooms:       Number(v('f-beds')),
+    bathrooms:      Number(v('f-baths')),
+    sqft:           v('f-sqft') ? Number(v('f-sqft')) : null,
+    available_from: v('f-from'),
+    available_to:   v('f-to'),
+    description:    v('f-desc'),
+    furnished:      isFurnished,
+    sublease_type:  subleaseType,
+    amenities:      [...selectedAmenities],
+    photos:         uploadedPhotos,
+  };
+
+  const { listing: created, error } = await Listings.create(listing);
+
+  if (error) {
+    errEl.textContent = 'Error publishing: ' + error;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = '🚀 Publish listing';
+  } else {
+    location.href = 'listing.html?id=' + created.id + '&published=1';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Listing — SubletSync</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+  <style>
+    :root{
+      --bg:#faf7f2;--surface:#fff;--surface-alt:#f3ede3;
+      --accent:#BF5700;--accent-dark:#8B3A00;--accent-light:rgba(191,87,0,0.08);
+      --accent3:#5a8a4f;--text:#1a1510;--muted:#8a7d6b;
+      --border:rgba(191,87,0,0.15);--border-solid:#d4c0a8;
+      --font-d:'Cormorant Garamond',Georgia,serif;
+      --font-b:'Plus Jakarta Sans',-apple-system,sans-serif;
+      --r:12px;
+      --sh:0 4px 20px rgba(26,21,16,0.08),0 1px 4px rgba(26,21,16,0.04);
+      --sh-lg:0 24px 64px rgba(26,21,16,0.11),0 8px 24px rgba(26,21,16,0.05);
+      --max:1140px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text)}
+
+    /* Toast */
+    .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1510;color:#fff;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:600;z-index:500;opacity:0;pointer-events:none;transition:all 0.3s;white-space:nowrap}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    /* Success banner */
+    .publish-banner{background:rgba(90,138,79,0.1);border-bottom:2px solid var(--accent3);padding:14px 24px;text-align:center;display:none}
+    .publish-banner.show{display:block}
+    .publish-banner p{font-size:14px;color:var(--accent3);font-weight:600}
+
+    .page-wrap{max-width:var(--max);margin:0 auto;padding:24px 24px 80px}
+
+    /* Breadcrumb */
+    .breadcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:22px;flex-wrap:wrap}
+    .breadcrumb a{color:var(--muted);text-decoration:none;transition:color 0.2s}
+    .breadcrumb a:hover{color:var(--accent)}
+    .breadcrumb .sep{color:var(--border-solid)}
+    .breadcrumb .cur{color:var(--text);font-weight:500;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* Layout */
+    .listing-layout{display:grid;grid-template-columns:1fr 340px;gap:32px;align-items:start}
+    @media(max-width:860px){.listing-layout{grid-template-columns:1fr}}
+
+    /* Gallery */
+    .gallery{border-radius:var(--r);overflow:hidden;background:var(--surface-alt);margin-bottom:24px;box-shadow:var(--sh)}
+    .gallery-main{height:370px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e8ddd0,#d4c0a8);font-size:80px;position:relative;overflow:hidden}
+    .gallery-main img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;cursor:zoom-in}
+    .gallery-thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;background:var(--surface-alt)}
+    .gallery-thumb{height:76px;background:var(--surface-alt);border-radius:4px;overflow:hidden;cursor:pointer;opacity:0.65;transition:opacity 0.2s;position:relative}
+    .gallery-thumb:hover,.gallery-thumb.active{opacity:1}
+    .gallery-thumb img{width:100%;height:100%;object-fit:cover}
+    .gallery-placeholder{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;padding:3px;background:var(--surface-alt)}
+    .gallery-ph{height:76px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0.5}
+    .no-photos-note{text-align:center;padding:8px 12px;font-size:12px;color:var(--muted);border-top:1px solid var(--border)}
+
+    /* Tags */
+    .listing-tags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+    .tag{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;line-height:1.4}
+    .tag-verified{background:rgba(90,138,79,0.1);color:var(--accent3)}
+    .tag-type{background:var(--accent-light);color:var(--accent)}
+    .tag-meta{background:var(--surface-alt);color:var(--muted);border:1px solid var(--border)}
+
+    /* Main content */
+    .listing-title{font-family:var(--font-d);font-size:clamp(1.6rem,3vw,2.5rem);font-weight:600;color:var(--text);line-height:1.2;margin-bottom:8px}
+    .listing-address{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--muted);margin-bottom:16px}
+    .price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+    .price-big{font-family:var(--font-d);font-size:clamp(1.8rem,3vw,2.4rem);font-weight:700;color:var(--accent)}
+    .price-sub{font-size:14px;color:var(--muted)}
+    .dates-chip{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);padding:9px 14px;background:var(--surface-alt);border-radius:8px;margin-bottom:22px;border:1px solid var(--border)}
+    .dates-chip strong{color:var(--text)}
+    .dates-chip .dur{margin-left:auto;font-size:12px;background:var(--surface);border-radius:5px;padding:2px 8px;border:1px solid var(--border)}
+
+    .section{margin-bottom:26px}
+    .section-title{font-family:var(--font-d);font-size:1.25rem;font-weight:600;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+    .description-text{font-size:15px;line-height:1.8;color:var(--text)}
+
+    .amenities-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+    .amenity-item{display:flex;align-items:center;gap:9px;padding:10px 12px;background:var(--surface-alt);border-radius:8px;font-size:13px;font-weight:500;color:var(--text);border:1px solid var(--border)}
+    .amenity-icon{font-size:18px;flex-shrink:0;line-height:1}
+
+    .map-box{height:200px;background:var(--surface-alt);border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border:1px solid var(--border);color:var(--muted)}
+    .map-box .map-emoji{font-size:36px}
+    .map-box address{font-style:normal;font-size:14px;text-align:center;max-width:280px}
+    .map-box a{color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;padding:7px 16px;border:1.5px solid var(--accent);border-radius:8px;transition:background 0.2s}
+    .map-box a:hover{background:var(--accent-light)}
+
+    .lister-card{display:flex;align-items:center;gap:14px;padding:18px;background:var(--surface-alt);border-radius:var(--r);border:1px solid var(--border)}
+    .lister-card-ava{width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:var(--font-b);flex-shrink:0;overflow:hidden}
+    .lister-card-ava img{width:100%;height:100%;object-fit:cover}
+    .lister-card-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px}
+    .lister-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .edu-badge{font-size:11px;font-weight:700;color:var(--accent3);background:rgba(90,138,79,0.1);border-radius:4px;padding:2px 8px}
+    .lister-uni{font-size:12px;color:var(--muted)}
+    .trust-row{display:flex;align-items:center;gap:6px;margin-top:7px}
+    .trust-bar{width:80px;height:4px;background:#e0d8cc;border-radius:2px;overflow:hidden}
+    .trust-bar-fill{height:100%;border-radius:2px}
+    .trust-txt{font-size:12px;font-weight:700}
+    .trust-lbl{font-size:11px;color:var(--muted)}
+
+    /* Contact card (right sidebar) */
+    .contact-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;box-shadow:var(--sh);position:sticky;top:88px}
+    .cc-price{font-family:var(--font-d);font-size:clamp(1.6rem,3vw,2rem);font-weight:700;color:var(--accent);margin-bottom:3px}
+    .cc-sub{font-size:13px;color:var(--muted);margin-bottom:14px}
+    .cc-dates{padding:9px 13px;background:var(--surface-alt);border-radius:8px;margin-bottom:16px;font-size:13px;color:var(--muted);border:1px solid var(--border)}
+    .cc-dates strong{display:block;font-size:14px;color:var(--text);margin-bottom:2px}
+    .cc-lister{display:flex;align-items:center;gap:11px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+    .cc-ava{width:46px;height:46px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;font-family:var(--font-b);flex-shrink:0;overflow:hidden}
+    .cc-ava img{width:100%;height:100%;object-fit:cover}
+    .cc-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px}
+
+    .btn-send{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-b);font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.15s;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+    .btn-send:hover{background:var(--accent-dark);transform:translateY(-1px)}
+    .icon-row{display:flex;gap:8px;margin-bottom:4px}
+    .icon-btn{flex:1;padding:9px;border:1.5px solid var(--border-solid);border-radius:8px;background:#fff;font-size:18px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;line-height:1}
+    .icon-btn:hover{border-color:var(--accent);background:var(--accent-light)}
+    .icon-btn.saved-on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+    /* Inline message form */
+    .msg-form{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:none}
+    .msg-form.open{display:block;animation:fadeIn 0.2s ease}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .msg-form-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:0.04em}
+    .msg-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border-solid);border-radius:8px;font-family:var(--font-b);font-size:14px;resize:none;min-height:88px;outline:none;transition:border-color 0.2s;color:var(--text);line-height:1.5}
+    .msg-textarea:focus{border-color:var(--accent)}
+    .msg-send-row{display:flex;gap:8px;margin-top:8px}
+    .msg-send-btn{flex:1;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--font-b);font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s}
+    .msg-send-btn:hover{background:var(--accent-dark)}
+    .msg-send-btn:disabled{background:var(--muted);cursor:not-allowed}
+    .msg-cancel-btn{padding:10px 14px;background:transparent;border:1.5px solid var(--border-solid);border-radius:8px;font-family:var(--font-b);font-size:13px;color:var(--muted);cursor:pointer}
+    .msg-cancel-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .msg-success-note{margin-top:8px;padding:9px 12px;background:rgba(90,138,79,0.08);border-radius:8px;font-size:13px;color:var(--accent3);font-weight:600;text-align:center}
+
+    .cc-trust-safe{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);text-align:center;line-height:1.65}
+
+    /* Mobile contact bar */
+    .mobile-contact-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:12px 20px;z-index:90;gap:10px;box-shadow:0 -4px 20px rgba(26,21,16,0.08)}
+    .mobile-contact-bar .mc-price{font-family:var(--font-d);font-size:1.3rem;font-weight:700;color:var(--accent);white-space:nowrap}
+    .mobile-contact-bar .mc-mo{font-size:12px;color:var(--muted)}
+    .mobile-send-btn{flex:1;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-b);font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s}
+    .mobile-send-btn:hover{background:var(--accent-dark)}
+    @media(max-width:860px){
+      .mobile-contact-bar{display:flex;align-items:center}
+      .listing-sidebar{display:none!important}
+      body{padding-bottom:80px}
+    }
+
+    /* Similar listings */
+    .similar-section{margin-top:44px;padding-top:28px;border-top:1px solid var(--border)}
+    .sim-title{font-family:var(--font-d);font-size:1.7rem;font-weight:600;color:var(--text);margin-bottom:20px}
+    .sim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    @media(max-width:780px){.sim-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:440px){.sim-grid{grid-template-columns:1fr}}
+    .sim-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:box-shadow 0.2s,transform 0.2s;text-decoration:none;display:block;color:inherit}
+    .sim-card:hover{box-shadow:var(--sh);transform:translateY(-2px)}
+    .sim-photo{height:120px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;position:relative}
+    .sim-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .sim-body{padding:12px}
+    .sim-price{font-weight:700;color:var(--accent);font-size:15px;margin-bottom:3px}
+    .sim-listing-title{font-family:var(--font-d);font-size:1rem;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .sim-city{font-size:12px;color:var(--muted)}
+
+    /* Footer */
+    footer{border-top:1px solid var(--border);padding:24px;background:var(--surface)}
+    .footer-inner{max-width:var(--max);margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+    .footer-logo{display:flex;align-items:center;gap:8px}
+    .footer-sq{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-d);font-size:13px;font-weight:700}
+    .footer-name{font-family:var(--font-b);font-weight:600;color:var(--text);font-size:14px}
+    footer p{font-size:13px;color:var(--muted)}
+    footer a{color:var(--accent);text-decoration:none;font-weight:600;font-size:13px}
+
+    @media(max-width:600px){
+      .gallery-main{height:240px;font-size:60px}
+      .gallery-thumbs,.gallery-placeholder{display:none}
+      .page-wrap{padding:16px 16px 80px}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Published success banner -->
+<div class="publish-banner" id="publish-banner">
+  <p>🎉 Your listing is live! Share it with friends or <a href="browse.html" style="color:var(--accent3)">browse other listings</a>.</p>
+</div>
+
+<div id="nav"></div>
+
+<div class="page-wrap">
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a href="browse.html">Browse</a>
+    <span class="sep" aria-hidden="true">›</span>
+    <span class="cur" id="bc-title">Loading…</span>
+  </nav>
+
+  <!-- Main content + sidebar -->
+  <div class="listing-layout">
+    <div id="listing-main">
+      <!-- skeleton -->
+      <div style="background:var(--surface);border-radius:var(--r);height:370px;animation:shimmer 1.5s infinite;background-size:200%;background-image:linear-gradient(90deg,#f0e8dc,#e5d8c8 50%,#f0e8dc)"></div>
+    </div>
+    <div class="listing-sidebar" id="listing-sidebar" style="display:none">
+      <div class="contact-card" id="contact-card"></div>
+    </div>
+  </div>
+
+  <!-- Similar listings -->
+  <div id="similar-section" style="display:none">
+    <div class="similar-section">
+      <div class="sim-title">Similar listings</div>
+      <div class="sim-grid" id="sim-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile sticky contact bar -->
+<div class="mobile-contact-bar" id="mobile-bar" style="display:none">
+  <div>
+    <div class="mc-price" id="mob-price">—</div>
+    <div class="mc-mo">/month</div>
+  </div>
+  <button class="mobile-send-btn" onclick="openMessage()">💬 Message lister</button>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">
+      <div class="footer-sq">SS</div>
+      <span class="footer-name">SubletSync</span>
+    </div>
+    <p>© 2026 SubletSync</p>
+    <a href="browse.html">← Browse listings</a>
+  </div>
+</footer>
+
+<script>
+const AMENITY_ICONS = {
+  'WiFi':'📶','Parking':'🚗','Pet-friendly':'🐾','In-unit W/D':'🧺',
+  'AC':'❄️','Pool':'🏊','Gym':'🏋️','Furnished':'🛋️',
+  'Utilities Included':'💡','Rooftop':'🌇'
+};
+
+let currentListing = null;
+let currentUser = null;
+
+/* ── Init ── */
+async function init() {
+  await renderNav('browse');
+  currentUser = await Auth.getUser();
+
+  // Check if we just published
+  const params = new URLSearchParams(location.search);
+  if (params.get('published') === '1') {
+    document.getElementById('publish-banner').classList.add('show');
+    // Remove ?published=1 from URL without reload
+    history.replaceState(null, '', '?id=' + params.get('id'));
+  }
+
+  const id = params.get('id');
+  const { listing } = await Listings.getById(id);
+  currentListing = listing;
+
+  if (!listing) {
+    document.getElementById('listing-main').innerHTML = `
+      <div style="text-align:center;padding:80px 24px">
+        <div style="font-size:52px;margin-bottom:18px">😕</div>
+        <h2 style="font-family:var(--font-d);font-size:1.8rem;margin-bottom:10px">Listing not found</h2>
+        <p style="color:var(--muted);margin-bottom:24px">This listing may have been removed or is no longer available.</p>
+        <a href="browse.html" style="padding:12px 28px;background:var(--accent);color:#fff;border-radius:var(--r);font-family:var(--font-b);font-size:14px;font-weight:700;text-decoration:none">Browse listings</a>
+      </div>`;
+    return;
+  }
+
+  document.title = listing.title + ' — SubletSync';
+  document.getElementById('bc-title').textContent = listing.title;
+
+  renderMain(listing);
+  renderContactCard(listing);
+  setupMobileBar(listing);
+  loadSimilar(listing);
+}
+
+/* ── Render main column ── */
+function renderMain(l) {
+  const emoji   = bedsEmoji(l.bedrooms);
+  const photos  = Array.isArray(l.photos) && l.photos.length ? l.photos : [];
+  const bedsLbl = bedsLabel(l.bedrooms);
+  const typeLabel = l.sublease_type === 'private_room' ? 'Private Room' : 'Whole Unit';
+  const months  = monthsDiff(l.available_from, l.available_to);
+  const score   = Number(l.trust_score) || 70;
+  const sc      = trustColor(score);
+
+  // Gallery
+  let galleryHTML;
+  if (photos.length) {
+    galleryHTML = `
+      <div class="gallery">
+        <div class="gallery-main">
+          <img src="${photos[0]}" alt="${escapeHtml(l.title)}" id="main-img"/>
+        </div>
+        ${photos.length > 1 ? `
+        <div class="gallery-thumbs">
+          ${photos.map((p,i) => `
+            <div class="gallery-thumb${i===0?' active':''}" onclick="setPhoto('${p}',this)">
+              <img src="${p}" alt="Photo ${i+1}" loading="lazy"/>
+            </div>`).join('')}
+        </div>` : ''}
+      </div>`;
+  } else {
+    galleryHTML = `
+      <div class="gallery">
+        <div class="gallery-main" style="font-size:80px">${emoji}</div>
+        <div class="gallery-placeholder">
+          ${['🪟','🛋️','🛁','🌳'].map(e => `<div class="gallery-ph">${e}</div>`).join('')}
+        </div>
+        <div class="no-photos-note">No photos uploaded yet — contact the lister to request them</div>
+      </div>`;
+  }
+
+  // Amenities
+  const amenHtml = (l.amenities||[]).length ? `
+    <div class="section">
+      <div class="section-title">Amenities</div>
+      <div class="amenities-grid">
+        ${(l.amenities||[]).map(a => `
+          <div class="amenity-item">
+            <span class="amenity-icon">${AMENITY_ICONS[a] || '✓'}</span>
+            ${escapeHtml(a)}
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // Lister name / email / university from joined or flat fields
+  const lName   = l.lister_name || 'Anonymous';
+  const lEmail  = l.lister_email || '';
+  const lUni    = l.lister_university || '';
+  const lGrad   = l.lister_grad_year || '';
+  const lAvatar = l.lister_avatar || null;
+
+  document.getElementById('listing-main').innerHTML = `
+    ${galleryHTML}
+
+    <div class="listing-tags">
+      ${isEdu(lEmail) ? '<span class="tag tag-verified">✓ .edu Verified</span>' : ''}
+      <span class="tag tag-type">${typeLabel}</span>
+      <span class="tag tag-meta">${bedsLbl}</span>
+      <span class="tag tag-meta">${l.bathrooms} Bath${l.bathrooms > 1 ? 's' : ''}</span>
+      ${l.sqft ? `<span class="tag tag-meta">${l.sqft} ft²</span>` : ''}
+      ${l.furnished ? '<span class="tag tag-meta">Furnished</span>' : ''}
+    </div>
+
+    <h1 class="listing-title">${escapeHtml(l.title)}</h1>
+    <div class="listing-address">📍 ${escapeHtml(l.address)}, ${escapeHtml(l.city)}, ${escapeHtml(l.state)}</div>
+
+    <div class="price-row">
+      <span class="price-big">${formatPrice(l.price)}</span>
+      <span class="price-sub">/ month</span>
+    </div>
+
+    <div class="dates-chip">
+      <span>📅</span>
+      <span>Available <strong>${formatDate(l.available_from)}</strong> – <strong>${formatDate(l.available_to)}</strong></span>
+      <span class="dur">${months} mo</span>
+    </div>
+
+    <div class="section">
+      <div class="section-title">About this listing</div>
+      <div class="description-text">${escapeHtml(l.description || '').replace(/\n/g,'<br>')}</div>
+    </div>
+
+    ${amenHtml}
+
+    <div class="section">
+      <div class="section-title">Location</div>
+      <div class="map-box">
+        <div class="map-emoji">🗺️</div>
+        <address>${escapeHtml(l.address)}, ${escapeHtml(l.city)}, ${escapeHtml(l.state)}</address>
+        <a href="https://www.google.com/maps/search/${encodeURIComponent((l.address||'') + ', ' + (l.city||'') + ', ' + (l.state||''))}"
+           target="_blank" rel="noopener">Open in Google Maps →</a>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">About the lister</div>
+      <div class="lister-card">
+        <div class="lister-card-ava">
+          ${lAvatar ? `<img src="${lAvatar}" alt="${escapeHtml(lName)}"/>` : escapeHtml(initials(lName))}
+        </div>
+        <div style="flex:1">
+          <div class="lister-card-name">${escapeHtml(lName)}</div>
+          <div class="lister-card-meta">
+            ${isEdu(lEmail) ? '<span class="edu-badge">.edu verified</span>' : ''}
+            ${lUni ? `<span class="lister-uni">${escapeHtml(lUni)}${lGrad ? ' · Class of ' + lGrad : ''}</span>` : ''}
+          </div>
+          <div class="trust-row">
+            <div class="trust-bar"><div class="trust-bar-fill" style="width:${score}%;background:${sc}"></div></div>
+            <span class="trust-txt" style="color:${sc}">${score}</span>
+            <span class="trust-lbl">trust score</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('listing-sidebar').style.display = '';
+}
+
+/* ── Contact card (right sidebar) ── */
+function renderContactCard(l) {
+  const saved  = Saved.isSaved(l.id);
+  const score  = Number(l.trust_score) || 70;
+  const sc     = trustColor(score);
+  const lName  = l.lister_name || 'Anonymous';
+  const lEmail = l.lister_email || '';
+  const lUni   = l.lister_university || '';
+  const lAvatar= l.lister_avatar || null;
+  const months = monthsDiff(l.available_from, l.available_to);
+
+  document.getElementById('contact-card').innerHTML = `
+    <div class="cc-price">${formatPrice(l.price)}</div>
+    <div class="cc-sub">per month · ${l.sublease_type === 'private_room' ? 'Private Room' : 'Whole Unit'} · ${months} mo</div>
+
+    <div class="cc-dates">
+      <strong>Availability window</strong>
+      ${formatDate(l.available_from)} → ${formatDate(l.available_to)}
+    </div>
+
+    <div class="cc-lister">
+      <div class="cc-ava">
+        ${lAvatar ? `<img src="${lAvatar}" alt="${escapeHtml(lName)}"/>` : escapeHtml(initials(lName))}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="cc-name">${escapeHtml(lName)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px">
+          ${isEdu(lEmail) ? '<span class="edu-badge">.edu ✓</span>' : ''}
+          ${lUni ? `<span style="font-size:11px;color:var(--muted)">${escapeHtml(lUni)}</span>` : ''}
+        </div>
+        <div class="trust-row" style="margin-top:6px">
+          <div class="trust-bar"><div class="trust-bar-fill" style="width:${score}%;background:${sc}"></div></div>
+          <span class="trust-txt" style="color:${sc}">${score}</span>
+          <span class="trust-lbl">trust score</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-send" onclick="openMessage()">💬 Send message</button>
+
+    <div class="icon-row">
+      <button class="icon-btn${saved?' saved-on':''}" id="save-btn" onclick="toggleSave()" title="${saved?'Unsave':'Save'}">
+        ${saved ? '♥' : '♡'}
+      </button>
+      <button class="icon-btn" onclick="doShare()" title="Share listing">🔗</button>
+      <button class="icon-btn" id="copy-btn" onclick="copyLink()" title="Copy link">📋</button>
+    </div>
+
+    <!-- Inline message form -->
+    <div class="msg-form" id="msg-form">
+      <span class="msg-form-label">Your message</span>
+      <textarea class="msg-textarea" id="msg-content"
+        placeholder="Hi! I'm interested in your listing — is it still available for the dates you listed?"></textarea>
+      <div class="msg-send-row">
+        <button class="msg-send-btn" id="msg-send-btn" onclick="sendMsg()">Send ✓</button>
+        <button class="msg-cancel-btn" onclick="closeMessage()">Cancel</button>
+      </div>
+      <div id="msg-feedback"></div>
+    </div>
+
+    <div class="cc-trust-safe">
+      🛡️ SubletSync verifies all .edu accounts.<br>
+      Never send money before signing a lease.
+    </div>
+  `;
+}
+
+/* ── Mobile bar ── */
+function setupMobileBar(l) {
+  const bar = document.getElementById('mobile-bar');
+  document.getElementById('mob-price').textContent = formatPrice(l.price);
+  bar.style.display = 'flex';
+}
+
+/* ── Similar listings ── */
+async function loadSimilar(l) {
+  const { listings } = await Listings.getAll();
+  const similar = listings
+    .filter(x => x.id !== l.id && x.city === l.city)
+    .sort((a,b) => Math.abs(a.price - l.price) - Math.abs(b.price - l.price))
+    .slice(0, 3);
+  if (!similar.length) return;
+
+  document.getElementById('similar-section').style.display = '';
+  document.getElementById('sim-grid').innerHTML = similar.map(s => {
+    const e = bedsEmoji(s.bedrooms);
+    const photo = s.photos && s.photos[0]
+      ? `<img src="${s.photos[0]}" alt="${escapeHtml(s.title)}" loading="lazy"/><span style="display:none">`
+      : `<span>${e}</span>`;
+    return `
+      <a class="sim-card" href="listing.html?id=${s.id}">
+        <div class="sim-photo">${photo}</div>
+        <div class="sim-body">
+          <div class="sim-price">${formatPrice(s.price)}/mo</div>
+          <div class="sim-listing-title">${escapeHtml(s.title)}</div>
+          <div class="sim-city">📍 ${escapeHtml(s.city)}, ${escapeHtml(s.state)}</div>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+/* ── Photo gallery ── */
+function setPhoto(src, thumbEl) {
+  document.getElementById('main-img').src = src;
+  document.querySelectorAll('.gallery-thumb').forEach(t => t.classList.remove('active'));
+  thumbEl.classList.add('active');
+}
+
+/* ── Message form ── */
+function openMessage() {
+  if (!currentUser) { location.href = 'auth.html?next=' + encodeURIComponent(location.href); return; }
+  const form = document.getElementById('msg-form');
+  if (!form) return;
+  form.classList.add('open');
+  setTimeout(() => {
+    const ta = document.getElementById('msg-content');
+    if (ta) ta.focus();
+  }, 100);
+}
+
+function closeMessage() {
+  const form = document.getElementById('msg-form');
+  if (form) form.classList.remove('open');
+}
+
+async function sendMsg() {
+  if (!currentUser) { location.href = 'auth.html'; return; }
+  const content = (document.getElementById('msg-content').value || '').trim();
+  if (!content) {
+    showToast('Please write a message first.');
+    return;
+  }
+
+  const sendBtn = document.getElementById('msg-send-btn');
+  sendBtn.disabled = true;
+  sendBtn.textContent = 'Sending…';
+
+  const receiverId = currentListing.lister_id;
+  const { error } = await Messages.send(currentListing.id, receiverId, content);
+  const fb = document.getElementById('msg-feedback');
+
+  sendBtn.disabled = false;
+  sendBtn.textContent = 'Send ✓';
+
+  if (error) {
+    fb.innerHTML = `<div style="color:#c41d2e;font-size:13px;margin-top:8px">⚠ ${escapeHtml(error)}</div>`;
+  } else {
+    document.getElementById('msg-content').value = '';
+    fb.innerHTML = `<div class="msg-success-note">✓ Message sent! <a href="messages.html?listing=${currentListing.id}&user=${receiverId}" style="color:var(--accent3);font-weight:700">View conversation →</a></div>`;
+    setTimeout(() => closeMessage(), 4000);
+  }
+}
+
+/* ── Save / Share / Copy ── */
+async function toggleSave() {
+  if (!currentUser) { location.href = 'auth.html?next=' + encodeURIComponent(location.href); return; }
+  const btn = document.getElementById('save-btn');
+  btn.style.opacity = '0.5';
+  const { saved } = await Saved.toggle(currentListing.id);
+  btn.style.opacity = '';
+  btn.classList.toggle('saved-on', saved);
+  btn.innerHTML = saved ? '♥' : '♡';
+  btn.title = saved ? 'Unsave' : 'Save';
+  showToast(saved ? '♥ Saved to your dashboard' : 'Removed from saved');
+}
+
+function doShare() {
+  if (navigator.share && currentListing) {
+    navigator.share({
+      title: currentListing.title,
+      text: 'Check out this sublease on SubletSync!',
+      url: location.href
+    }).catch(() => copyLink());
+  } else {
+    copyLink();
+  }
+}
+
+function copyLink() {
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(location.href).then(() => {
+    if (btn) { btn.innerHTML = '✓'; btn.style.background = 'var(--accent-light)'; }
+    showToast('Link copied to clipboard!');
+    setTimeout(() => { if (btn) { btn.innerHTML = '📋'; btn.style.background = ''; } }, 2200);
+  }).catch(() => {
+    showToast('Copy: ' + location.href);
+  });
+}
+
+/* ── Toast ── */
+function showToast(msg, duration = 2600) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+init();
+</script>
+</body>
+</html>

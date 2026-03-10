@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Dashboard — SubletSync</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+  <style>
+    :root{
+      --bg:#faf7f2;--surface:#fff;--surface-alt:#f3ede3;
+      --accent:#BF5700;--accent-dark:#8B3A00;--accent-light:rgba(191,87,0,0.08);
+      --accent3:#5a8a4f;--text:#1a1510;--muted:#8a7d6b;
+      --border:rgba(191,87,0,0.15);--border-solid:#d4c0a8;
+      --font-d:'Cormorant Garamond',Georgia,serif;
+      --font-b:'Plus Jakarta Sans',-apple-system,sans-serif;
+      --r:12px;
+      --sh:0 4px 20px rgba(26,21,16,0.08),0 1px 4px rgba(26,21,16,0.04);
+      --sh-lg:0 24px 64px rgba(26,21,16,0.11),0 8px 24px rgba(26,21,16,0.05);
+      --max:1140px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh}
+
+    .page-wrap{max-width:var(--max);margin:0 auto;padding:32px 24px 80px}
+
+    /* ── Profile header ── */
+    .profile-header{
+      background:linear-gradient(135deg,#1a1510 0%,#2d1f0f 50%,#3d2510 100%);
+      border-radius:20px;padding:32px 36px;margin-bottom:28px;
+      display:flex;align-items:center;gap:24px;position:relative;overflow:hidden;
+    }
+    .profile-header::before{content:'';position:absolute;top:-40%;right:-12%;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(191,87,0,0.18),transparent 65%);pointer-events:none}
+    .avatar-wrap{position:relative;cursor:pointer;flex-shrink:0}
+    .avatar-circle{width:76px;height:76px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-b);font-size:26px;font-weight:700;border:3px solid rgba(255,255,255,0.18);overflow:hidden;transition:opacity 0.2s}
+    .avatar-circle img{width:100%;height:100%;object-fit:cover}
+    .avatar-wrap:hover .avatar-circle{opacity:0.84}
+    .avatar-edit-badge{position:absolute;bottom:0;right:0;width:22px;height:22px;background:var(--accent);border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;pointer-events:none}
+    .profile-info{flex:1;min-width:0}
+    .profile-name{font-family:var(--font-d);font-size:clamp(1.3rem,3vw,2rem);font-weight:600;color:#fff;margin-bottom:5px;line-height:1.2}
+    .profile-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+    .edu-badge{font-size:11px;font-weight:700;color:var(--accent3);background:rgba(90,138,79,0.22);border-radius:4px;padding:2px 8px}
+    .profile-uni{font-size:13px;color:rgba(255,255,255,0.58)}
+    .trust-row{display:flex;align-items:center;gap:7px}
+    .trust-bar{width:100px;height:4px;background:rgba(255,255,255,0.12);border-radius:2px;overflow:hidden}
+    .trust-bar-fill{height:100%;border-radius:2px;background:var(--accent3)}
+    .trust-score-txt{font-size:12px;font-weight:700;color:var(--accent3)}
+    .trust-label{font-size:11px;color:rgba(255,255,255,0.4)}
+    .profile-since{font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px}
+    .profile-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+    .btn-edit-profile{padding:9px 16px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.18);border-radius:var(--r);font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap}
+    .btn-edit-profile:hover{background:rgba(255,255,255,0.2)}
+    .btn-signout{padding:7px 14px;background:transparent;color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-family:var(--font-b);font-size:12px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+    .btn-signout:hover{color:rgba(255,255,255,0.7);border-color:rgba(255,255,255,0.25)}
+    @media(max-width:680px){
+      .profile-header{flex-direction:column;text-align:center;padding:24px 20px;gap:16px}
+      .profile-actions{align-items:center;flex-direction:row}
+      .trust-row{justify-content:center}
+      .profile-meta{justify-content:center}
+    }
+
+    /* ── Tabs ── */
+    .dash-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .dash-tabs::-webkit-scrollbar{display:none}
+    .dash-tab{padding:11px 18px;font-family:var(--font-b);font-size:14px;font-weight:600;color:var(--muted);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0}
+    .dash-tab:hover{color:var(--text)}
+    .dash-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .tab-count{background:var(--accent-light);color:var(--accent);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700}
+    .dash-tab.active .tab-count{background:var(--accent);color:#fff}
+
+    /* ── Tab panels ── */
+    .tab-panel{display:none;animation:fadeIn 0.22s ease}
+    .tab-panel.active{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+    .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+    .section-head h2{font-family:var(--font-d);font-size:1.5rem;font-weight:600;color:var(--text)}
+    .btn-accent{background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-b);font-size:13px;font-weight:700;cursor:pointer;padding:9px 18px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:background 0.2s,transform 0.15s}
+    .btn-accent:hover{background:var(--accent-dark);transform:translateY(-1px)}
+
+    /* ── Manage cards grid ── */
+    .manage-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:18px}
+    .manage-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:box-shadow 0.2s}
+    .manage-card:hover{box-shadow:var(--sh)}
+    .manage-photo{height:140px;background:var(--surface-alt);display:flex;align-items:center;justify-content:center;font-size:46px;overflow:hidden;position:relative}
+    .manage-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .status-pill{position:absolute;top:9px;left:9px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+    .status-active{background:rgba(90,138,79,0.88);color:#fff}
+    .status-filled{background:rgba(138,125,107,0.88);color:#fff}
+    .status-removed{background:rgba(196,29,46,0.75);color:#fff}
+    .manage-body{padding:14px 16px}
+    .manage-price{font-size:15px;font-weight:700;color:var(--accent);margin-bottom:3px}
+    .manage-title{font-family:var(--font-d);font-size:1.05rem;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .manage-dates{font-size:12px;color:var(--muted);margin-bottom:12px}
+    .manage-btns{display:flex;gap:6px;flex-wrap:wrap}
+    .manage-btn{padding:6px 12px;border-radius:7px;font-family:var(--font-b);font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--border-solid);background:#fff;color:var(--text);transition:all 0.18s;text-decoration:none;display:inline-flex;align-items:center}
+    .manage-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .manage-btn.filled-btn{background:var(--accent3);border-color:var(--accent3);color:#fff}
+    .manage-btn.filled-btn:hover{background:#4a7641}
+    .manage-btn.danger-btn{color:var(--muted)}
+    .manage-btn.danger-btn:hover{border-color:#c41d2e;color:#c41d2e}
+
+    /* ── Empty state ── */
+    .empty-state{text-align:center;padding:60px 24px}
+    .empty-icon{font-size:52px;margin-bottom:16px;opacity:0.5;display:block}
+    .empty-state h3{font-family:var(--font-d);font-size:1.5rem;color:var(--text);margin-bottom:8px}
+    .empty-state p{font-size:14px;color:var(--muted);margin-bottom:22px;line-height:1.65;max-width:400px;margin-left:auto;margin-right:auto}
+
+    /* ── Conversations ── */
+    .conv-list{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+    .conv-item{display:flex;align-items:center;gap:13px;padding:15px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;text-decoration:none;color:inherit}
+    .conv-item:last-child{border-bottom:none}
+    .conv-item:hover{background:var(--accent-light)}
+    .conv-ava{width:42px;height:42px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;font-family:var(--font-b)}
+    .conv-body{flex:1;min-width:0}
+    .conv-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:1px}
+    .conv-listing{font-size:12px;color:var(--accent);font-weight:500;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .conv-preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .conv-right{text-align:right;flex-shrink:0}
+    .conv-time{font-size:11px;color:var(--muted);margin-bottom:5px}
+    .unread-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);margin-left:auto}
+
+    /* ── Loading spinner ── */
+    .loading-wrap{text-align:center;padding:48px 24px;color:var(--muted);font-size:14px}
+    .loading-wrap::before{content:'';display:block;width:28px;height:28px;border:2.5px solid var(--border-solid);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 14px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── Edit profile modal ── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(26,21,16,0.52);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity 0.25s}
+    .modal-overlay.open{opacity:1;pointer-events:auto}
+    .modal{background:var(--surface);border-radius:20px;padding:28px 32px;max-width:460px;width:100%;box-shadow:var(--sh-lg);transform:translateY(16px);transition:transform 0.25s;max-height:90vh;overflow-y:auto}
+    .modal-overlay.open .modal{transform:none}
+    .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+    .modal-title{font-family:var(--font-d);font-size:1.4rem;font-weight:600;color:var(--text)}
+    .modal-close{width:32px;height:32px;border-radius:50%;background:var(--surface-alt);border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background 0.18s}
+    .modal-close:hover{background:var(--border-solid)}
+    .m-form-group{margin-bottom:15px}
+    .m-label{display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:5px}
+    .m-input{width:100%;padding:10px 13px;border:1.5px solid var(--border-solid);border-radius:var(--r);font-family:var(--font-b);font-size:14px;color:var(--text);background:#fff;outline:none;transition:border-color 0.2s,box-shadow 0.2s}
+    .m-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+    textarea.m-input{resize:vertical;min-height:80px;line-height:1.55}
+    .m-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-footer{display:flex;gap:10px;margin-top:20px}
+    .modal-save{flex:1;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-b);font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s;display:flex;align-items:center;justify-content:center;gap:7px}
+    .modal-save:hover{background:var(--accent-dark)}
+    .modal-save:disabled{background:var(--muted);cursor:not-allowed}
+    .modal-cancel{padding:12px 18px;background:transparent;color:var(--muted);border:1.5px solid var(--border-solid);border-radius:var(--r);font-family:var(--font-b);font-size:14px;cursor:pointer;transition:all 0.2s}
+    .modal-cancel:hover{border-color:var(--accent);color:var(--accent)}
+    .avatar-upload-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)}
+    .modal-avatar{width:60px;height:60px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;font-family:var(--font-b);overflow:hidden;flex-shrink:0}
+    .modal-avatar img{width:100%;height:100%;object-fit:cover}
+    .upload-ava-btn{position:relative;padding:8px 16px;border:1.5px solid var(--border-solid);border-radius:8px;font-family:var(--font-b);font-size:13px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;transition:all 0.18s;overflow:hidden}
+    .upload-ava-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+    .upload-ava-btn:hover{border-color:var(--accent);color:var(--accent)}
+    .modal-success{font-size:13px;color:var(--accent3);font-weight:600;margin-top:8px;text-align:center}
+
+    .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block}
+
+    @media(max-width:640px){
+      .manage-grid{grid-template-columns:1fr}
+      .page-wrap{padding:20px 16px 80px}
+      .profile-header{border-radius:16px;padding:20px 16px}
+    }
+  </style>
+</head>
+<body>
+<div id="nav"></div>
+
+<div id="page-wrap" class="page-wrap" style="display:none">
+
+  <!-- Profile header -->
+  <div class="profile-header">
+    <div class="avatar-wrap" onclick="openModal()" title="Edit profile">
+      <div class="avatar-circle" id="profile-avatar">?</div>
+      <div class="avatar-edit-badge">✏️</div>
+    </div>
+    <div class="profile-info">
+      <div class="profile-name"  id="profile-name">Loading…</div>
+      <div class="profile-meta">
+        <span class="edu-badge"    id="edu-badge"  style="display:none">.edu verified</span>
+        <span class="profile-uni"  id="profile-uni"></span>
+      </div>
+      <div class="trust-row">
+        <div class="trust-bar"><div class="trust-bar-fill" id="trust-fill" style="width:70%"></div></div>
+        <span class="trust-score-txt" id="trust-score">70</span>
+        <span class="trust-label">trust score</span>
+      </div>
+      <div class="profile-since" id="profile-since"></div>
+    </div>
+    <div class="profile-actions">
+      <button class="btn-edit-profile" onclick="openModal()">✏️ Edit profile</button>
+      <button class="btn-signout"      onclick="doSignOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="dash-tabs" role="tablist">
+    <button class="dash-tab active" id="tab-listings" role="tab" aria-selected="true"  onclick="switchTab('listings')">
+      🏠 My Listings <span class="tab-count" id="cnt-listings">0</span>
+    </button>
+    <button class="dash-tab" id="tab-saved" role="tab" aria-selected="false" onclick="switchTab('saved')">
+      ♥ Saved <span class="tab-count" id="cnt-saved">0</span>
+    </button>
+    <button class="dash-tab" id="tab-messages" role="tab" aria-selected="false" onclick="switchTab('messages')">
+      💬 Messages
+    </button>
+  </div>
+
+  <!-- My Listings panel -->
+  <div class="tab-panel active" id="panel-listings" role="tabpanel">
+    <div class="section-head">
+      <h2>My Listings</h2>
+      <a href="post.html" class="btn-accent">+ Post new listing</a>
+    </div>
+    <div id="my-listings-content"><div class="loading-wrap">Loading your listings…</div></div>
+  </div>
+
+  <!-- Saved panel -->
+  <div class="tab-panel" id="panel-saved" role="tabpanel">
+    <div class="section-head">
+      <h2>Saved Listings</h2>
+      <a href="browse.html" class="btn-accent">Browse more</a>
+    </div>
+    <div id="saved-content"><div class="loading-wrap">Loading saved listings…</div></div>
+  </div>
+
+  <!-- Messages panel -->
+  <div class="tab-panel" id="panel-messages" role="tabpanel">
+    <div class="section-head"><h2>Messages</h2></div>
+    <div id="messages-content"><div class="loading-wrap">Loading conversations…</div></div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<!-- Edit profile modal -->
+<div class="modal-overlay" id="edit-modal" onclick="maybeCloseModal(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title-el">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-title-el">Edit Profile</div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+    </div>
+
+    <div class="avatar-upload-row">
+      <div class="modal-avatar" id="modal-ava">?</div>
+      <div>
+        <label class="upload-ava-btn">
+          📷 Change photo
+          <input type="file" accept="image/*" onchange="previewAvatar(this)"/>
+        </label>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">JPG/PNG · max 2 MB</div>
+      </div>
+    </div>
+
+    <div class="m-form-group">
+      <label class="m-label" for="e-name">Full name</label>
+      <input type="text" id="e-name" class="m-input" placeholder="Alex Chen" autocomplete="name"/>
+    </div>
+    <div class="m-form-group">
+      <label class="m-label" for="e-bio">Bio <span style="font-weight:400;color:var(--muted);font-size:12px">(optional)</span></label>
+      <textarea id="e-bio" class="m-input" rows="3" placeholder="Tell others a bit about yourself…"></textarea>
+    </div>
+    <div class="m-row">
+      <div class="m-form-group" style="margin-bottom:0">
+        <label class="m-label" for="e-uni">University</label>
+        <input type="text" id="e-uni" class="m-input" placeholder="UT Austin"/>
+      </div>
+      <div class="m-form-group" style="margin-bottom:0">
+        <label class="m-label" for="e-grad">Grad year</label>
+        <input type="number" id="e-grad" class="m-input" placeholder="2026" min="2024" max="2035"/>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-save" id="save-profile-btn" onclick="saveProfile()">Save changes</button>
+    </div>
+    <div class="modal-success" id="modal-success" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+let currentUser = null;
+let pendingAvatarFile = null;
+
+/* ── Init ── */
+async function init() {
+  await renderNav('dashboard');
+  currentUser = await Auth.getUser();
+
+  if (!currentUser) {
+    location.href = 'auth.html?next=dashboard.html';
+    return;
+  }
+
+  document.getElementById('page-wrap').style.display = '';
+  renderProfileHeader(currentUser);
+  await loadMyListings();   // loads eagerly
+
+  // Switch to tab from URL param
+  const tab = new URLSearchParams(location.search).get('tab');
+  if (tab && ['listings','saved','messages'].includes(tab)) switchTab(tab);
+}
+
+/* ── Profile header ── */
+function renderProfileHeader(user) {
+  const name  = user.name || user.email?.split('@')[0] || 'You';
+  const score = Number(user.trust_score) || 70;
+  const sc    = trustColor(score);
+
+  // Avatar
+  const ava = document.getElementById('profile-avatar');
+  if (user.avatar_url) {
+    ava.innerHTML = `<img src="${user.avatar_url}" alt="${escapeHtml(name)}"/>`;
+  } else {
+    ava.textContent = initials(name);
+  }
+  // Modal avatar preview
+  const mAva = document.getElementById('modal-ava');
+  if (user.avatar_url) {
+    mAva.innerHTML = `<img src="${user.avatar_url}" alt="${escapeHtml(name)}"/>`;
+  } else {
+    mAva.textContent = initials(name);
+  }
+
+  document.getElementById('profile-name').textContent  = name;
+  if (isEdu(user.email)) document.getElementById('edu-badge').style.display = '';
+  if (user.university) {
+    document.getElementById('profile-uni').textContent =
+      user.university + (user.grad_year ? ' · Class of ' + user.grad_year : '');
+  }
+  document.getElementById('trust-fill').style.width      = score + '%';
+  document.getElementById('trust-fill').style.background = sc;
+  document.getElementById('trust-score').textContent     = score;
+  document.getElementById('trust-score').style.color     = sc;
+  if (user.created_at) {
+    document.getElementById('profile-since').textContent = 'Member since ' + formatDate(user.created_at);
+  }
+
+  // Prefill modal fields
+  document.getElementById('e-name').value = name;
+  document.getElementById('e-bio').value  = user.bio || '';
+  document.getElementById('e-uni').value  = user.university || '';
+  document.getElementById('e-grad').value = user.grad_year || '';
+}
+
+/* ── Tab switching ── */
+function switchTab(tab) {
+  ['listings','saved','messages'].forEach(t => {
+    const active = t === tab;
+    document.getElementById('tab-'   + t).classList.toggle('active', active);
+    document.getElementById('tab-'   + t).setAttribute('aria-selected', active);
+    document.getElementById('panel-' + t).classList.toggle('active', active);
+  });
+  if (tab === 'saved'    && document.getElementById('saved-content').querySelector('.loading-wrap'))    loadSaved();
+  if (tab === 'messages' && document.getElementById('messages-content').querySelector('.loading-wrap')) loadMessages();
+}
+
+/* ── My Listings ── */
+async function loadMyListings() {
+  const container = document.getElementById('my-listings-content');
+  const { listings } = await Listings.getMyListings();
+  document.getElementById('cnt-listings').textContent = listings.length;
+
+  if (!listings.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">🏠</span>
+        <h3>No listings yet</h3>
+        <p>Post your first sublease to reach verified students looking for exactly what you have.</p>
+        <a href="post.html" class="btn-accent">Post a listing</a>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="manage-grid">${listings.map(buildManageCard).join('')}</div>`;
+}
+
+function buildManageCard(l) {
+  const emoji  = bedsEmoji(l.bedrooms);
+  const photo  = l.photos && l.photos[0]
+    ? `<img src="${l.photos[0]}" alt="${escapeHtml(l.title)}" loading="lazy"/><span style="display:none">`
+    : `<span>${emoji}</span>`;
+  const status = l.status || 'active';
+  const pillCls = status === 'filled' ? 'status-filled' : status === 'removed' ? 'status-removed' : 'status-active';
+  const pillTxt = status === 'filled' ? 'Filled' : status === 'removed' ? 'Removed' : 'Active';
+
+  return `
+<div class="manage-card">
+  <div class="manage-photo">
+    ${photo}
+    <span class="status-pill ${pillCls}">${pillTxt}</span>
+  </div>
+  <div class="manage-body">
+    <div class="manage-price">${formatPrice(l.price)}/mo</div>
+    <div class="manage-title">${escapeHtml(l.title)}</div>
+    <div class="manage-dates">📅 ${formatDate(l.available_from)} – ${formatDate(l.available_to)}</div>
+    <div class="manage-btns">
+      <a class="manage-btn" href="listing.html?id=${l.id}">View ↗</a>
+      ${status !== 'filled' && status !== 'removed'
+        ? `<button class="manage-btn filled-btn" onclick="markFilled('${l.id}',this)">Mark filled</button>`
+        : ''}
+      <button class="manage-btn danger-btn" onclick="deleteListing('${l.id}',this)">Delete</button>
+    </div>
+  </div>
+</div>`;
+}
+
+async function markFilled(id, btn) {
+  btn.textContent = '…';
+  btn.disabled = true;
+  await Listings.update(id, { status: 'filled' });
+  await loadMyListings();
+}
+
+async function deleteListing(id, btn) {
+  if (!confirm('Delete this listing? This cannot be undone.')) return;
+  btn.textContent = '…';
+  btn.disabled = true;
+  await Listings.delete(id);
+  await loadMyListings();
+}
+
+/* ── Saved ── */
+async function loadSaved() {
+  const container = document.getElementById('saved-content');
+  container.innerHTML = '<div class="loading-wrap">Loading saved listings…</div>';
+  const { listings } = await Saved.getAll();
+  document.getElementById('cnt-saved').textContent = listings.length;
+
+  if (!listings.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">♡</span>
+        <h3>No saved listings yet</h3>
+        <p>Hit the heart icon on any listing to save it here for easy reference.</p>
+        <a href="browse.html" class="btn-accent">Browse listings</a>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="manage-grid">${listings.map(l => {
+    const emoji = bedsEmoji(l.bedrooms);
+    const photo = l.photos && l.photos[0]
+      ? `<img src="${l.photos[0]}" alt="${escapeHtml(l.title)}" loading="lazy"/><span style="display:none">`
+      : `<span>${emoji}</span>`;
+    return `
+<div class="manage-card" style="cursor:pointer" onclick="location.href='listing.html?id=${l.id}'">
+  <div class="manage-photo">${photo}</div>
+  <div class="manage-body">
+    <div class="manage-price">${formatPrice(l.price)}/mo</div>
+    <div class="manage-title">${escapeHtml(l.title)}</div>
+    <div class="manage-dates">📍 ${escapeHtml(l.city)}, ${escapeHtml(l.state)}</div>
+    <div class="manage-btns">
+      <a class="manage-btn" href="listing.html?id=${l.id}" onclick="event.stopPropagation()">View →</a>
+      <button class="manage-btn danger-btn" onclick="event.stopPropagation();removeSaved('${l.id}',this)">Remove</button>
+    </div>
+  </div>
+</div>`;
+  }).join('')}</div>`;
+}
+
+async function removeSaved(id, btn) {
+  btn.textContent = '…';
+  btn.disabled = true;
+  await Saved.toggle(id);
+  await loadSaved();
+}
+
+/* ── Messages ── */
+async function loadMessages() {
+  const container = document.getElementById('messages-content');
+  container.innerHTML = '<div class="loading-wrap">Loading conversations…</div>';
+  const { conversations } = await Messages.getConversations();
+
+  if (!conversations.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">💬</span>
+        <h3>No messages yet</h3>
+        <p>When you message a lister or someone messages you, conversations appear here.</p>
+        <a href="browse.html" class="btn-accent">Browse listings</a>
+      </div>`;
+    return;
+  }
+
+  // Deduplicate: one row per (listing_id + other_user) pair
+  const seen = new Set();
+  const unique = conversations.filter(m => {
+    const otherId = m.sender_id === currentUser.id ? m.receiver_id : m.sender_id;
+    const key = (m.listing_id || '') + '_' + otherId;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  container.innerHTML = `<div class="conv-list">${unique.map(m => {
+    const otherId   = m.sender_id === currentUser.id ? m.receiver_id : m.sender_id;
+    const otherName = m.sender_id === currentUser.id
+      ? (m.receiver_name || 'Lister')
+      : (m.profiles?.name || m.sender_name || 'Student');
+    const listingId    = m.listing_id || m.listings?.id || '';
+    const listingTitle = m.listings?.title || m.listing_title || 'a listing';
+    const unread = !m.read && m.receiver_id === currentUser.id;
+    return `
+<a class="conv-item" href="messages.html?listing=${listingId}&user=${otherId}">
+  <div class="conv-ava">${escapeHtml(initials(otherName))}</div>
+  <div class="conv-body">
+    <div class="conv-name">${escapeHtml(otherName)}</div>
+    <div class="conv-listing">Re: ${escapeHtml(listingTitle)}</div>
+    <div class="conv-preview">${escapeHtml(m.content || '')}</div>
+  </div>
+  <div class="conv-right">
+    <div class="conv-time">${timeAgo(m.created_at)}</div>
+    ${unread ? '<div class="unread-dot"></div>' : ''}
+  </div>
+</a>`;
+  }).join('')}</div>`;
+}
+
+/* ── Modal ── */
+function openModal() {
+  document.getElementById('edit-modal').classList.add('open');
+  document.getElementById('modal-success').style.display = 'none';
+}
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  pendingAvatarFile = null;
+}
+function maybeCloseModal(e) {
+  if (e.target === document.getElementById('edit-modal')) closeModal();
+}
+
+function previewAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { alert('Photo is too large — please use one under 2 MB.'); return; }
+  pendingAvatarFile = file;
+  const url = URL.createObjectURL(file);
+  const mAva = document.getElementById('modal-ava');
+  mAva.innerHTML = `<img src="${url}" alt="avatar"/>`;
+}
+
+async function saveProfile() {
+  const btn = document.getElementById('save-profile-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+  // Upload avatar if changed
+  let avatarUrl = currentUser.avatar_url || null;
+  if (pendingAvatarFile) {
+    const { url } = await Profile.uploadAvatar(pendingAvatarFile);
+    if (url) avatarUrl = url;
+  }
+
+  const updates = {
+    name:       document.getElementById('e-name').value.trim(),
+    bio:        document.getElementById('e-bio').value.trim(),
+    university: document.getElementById('e-uni').value.trim(),
+    grad_year:  Number(document.getElementById('e-grad').value) || null,
+  };
+  if (avatarUrl) updates.avatar_url = avatarUrl;
+
+  const { error } = await Profile.update(updates);
+
+  btn.disabled = false;
+  btn.innerHTML = 'Save changes';
+
+  if (error) {
+    alert('Error saving: ' + error);
+  } else {
+    currentUser = { ...currentUser, ...updates, avatar_url: avatarUrl };
+    renderProfileHeader(currentUser);
+    const s = document.getElementById('modal-success');
+    s.textContent = '✓ Profile updated!';
+    s.style.display = 'block';
+    setTimeout(closeModal, 1400);
+  }
+}
+
+/* ── Sign out ── */
+async function doSignOut() {
+  if (!confirm('Sign out of SubletSync?')) return;
+  await Auth.signOut();
+  location.href = 'subletsync.html';
+}
+
+init();
+</script>
+</body>
+</html>
