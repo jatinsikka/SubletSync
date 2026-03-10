@@ -19,6 +19,41 @@ function getSupabase() {
   return _supabase;
 }
 
+// ── Platform Disclaimer ───────────────────────────────────────
+const PLATFORM_DISCLAIMER = `SubletSync is a platform that connects sublessors and sublessees. SubletSync is not a party to any sublease agreement and does not guarantee the accuracy of any listing. Escrow payments are processed and held by Stripe, Inc. Identity verification is powered by Stripe Identity and LinkedIn.`;
+
+// ── Trust Tier System ─────────────────────────────────────────
+const TRUST_TIERS = {
+  guest:   { label: 'Guest',            badge: '',    score: 20, color: '#8a7d6b' },
+  member:  { label: 'Member',           badge: '📱',  score: 45, color: '#8a7d6b' },
+  student: { label: 'Student Verified', badge: '🎓',  score: 72, color: '#2563eb' },
+  pro:     { label: 'Pro Verified',     badge: '💼',  score: 80, color: '#BF5700' },
+  id:      { label: 'ID Verified',      badge: '✅',  score: 95, color: '#5a8a4f' },
+};
+
+function getTrustTier(user) {
+  if (!user) return 'guest';
+  if (user.id_verified === true) return 'id';
+  if (user.linkedin_verified === true || user.is_pro_email === true) return 'pro';
+  if (user.is_edu === true || (user.email && user.email.toLowerCase().endsWith('.edu'))) return 'student';
+  if (user.phone_verified === true) return 'member';
+  return 'guest';
+}
+
+function isProEmail(email) {
+  if (!email) return false;
+  const domain = email.toLowerCase().split('@')[1] || '';
+  if (domain.endsWith('.edu')) return false;
+  const common = ['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com','protonmail.com','aol.com'];
+  return !common.includes(domain);
+}
+
+function renderTrustBadge(user) {
+  const tier = getTrustTier(user);
+  const t = TRUST_TIERS[tier];
+  return `<span class="trust-badge-pill tier-${tier}">${t.badge ? t.badge + ' ' : ''}${escapeHtml(t.label)}</span>`;
+}
+
 // ── Demo Data ─────────────────────────────────────────────────
 const DEMO_LISTINGS = [
   {
@@ -34,7 +69,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-1', lister_name: 'Maya Patel',
     lister_email: 'mpatel@mit.edu', lister_university: 'MIT', lister_grad_year: 2026,
-    trust_score: 92, created_at: '2026-02-10T14:30:00Z', status: 'active'
+    trust_score: 92, lister_tier: 'student', created_at: '2026-02-10T14:30:00Z', status: 'active'
   },
   {
     id: 'demo-2',
@@ -49,7 +84,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-2', lister_name: 'James Okonkwo',
     lister_email: 'jokonkwo@northwestern.edu', lister_university: 'Northwestern', lister_grad_year: 2027,
-    trust_score: 88, created_at: '2026-02-14T09:15:00Z', status: 'active'
+    trust_score: 88, lister_tier: 'student', created_at: '2026-02-14T09:15:00Z', status: 'active'
   },
   {
     id: 'demo-3',
@@ -64,7 +99,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-3', lister_name: 'Sofia Reyes',
     lister_email: 'sreyes@umich.edu', lister_university: 'U of Michigan', lister_grad_year: 2026,
-    trust_score: 95, created_at: '2026-02-18T16:45:00Z', status: 'active'
+    trust_score: 95, lister_tier: 'id', created_at: '2026-02-18T16:45:00Z', status: 'active'
   },
   {
     id: 'demo-4',
@@ -79,7 +114,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-4', lister_name: 'Derek Huang',
     lister_email: 'dhuang@ucla.edu', lister_university: 'UCLA', lister_grad_year: 2025,
-    trust_score: 79, created_at: '2026-02-20T11:00:00Z', status: 'active'
+    trust_score: 79, lister_tier: 'student', created_at: '2026-02-20T11:00:00Z', status: 'active'
   },
   {
     id: 'demo-5',
@@ -94,7 +129,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-5', lister_name: 'Priya Menon',
     lister_email: 'pmenon@columbia.edu', lister_university: 'Columbia', lister_grad_year: 2027,
-    trust_score: 83, created_at: '2026-02-22T08:30:00Z', status: 'active'
+    trust_score: 83, lister_tier: 'student', created_at: '2026-02-22T08:30:00Z', status: 'active'
   },
   {
     id: 'demo-6',
@@ -109,7 +144,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-6', lister_name: 'Aiden Walsh',
     lister_email: 'awalsh@duke.edu', lister_university: 'Duke', lister_grad_year: 2026,
-    trust_score: 97, created_at: '2026-02-25T13:00:00Z', status: 'active'
+    trust_score: 97, lister_tier: 'id', created_at: '2026-02-25T13:00:00Z', status: 'active'
   },
   {
     id: 'demo-7',
@@ -124,7 +159,7 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-7', lister_name: 'Zara Ahmed',
     lister_email: 'zahmed@uw.edu', lister_university: 'U of Washington', lister_grad_year: 2028,
-    trust_score: 86, created_at: '2026-03-01T10:00:00Z', status: 'active'
+    trust_score: 86, lister_tier: 'student', created_at: '2026-03-01T10:00:00Z', status: 'active'
   },
   {
     id: 'demo-8',
@@ -139,19 +174,19 @@ const DEMO_LISTINGS = [
     photos: [],
     lister_id: 'demo-user-8', lister_name: 'Caleb Johnson',
     lister_email: 'cjohnson@gatech.edu', lister_university: 'Georgia Tech', lister_grad_year: 2026,
-    trust_score: 90, created_at: '2026-03-05T15:20:00Z', status: 'active'
+    trust_score: 90, lister_tier: 'student', created_at: '2026-03-05T15:20:00Z', status: 'active'
   }
 ];
 
 const DEMO_USERS = {
-  'demo-user-1': { id:'demo-user-1', name:'Maya Patel',    email:'mpatel@mit.edu',            university:'MIT',              grad_year:2026, bio:'CS grad student, coffee enthusiast.',         trust_score:92 },
-  'demo-user-2': { id:'demo-user-2', name:'James Okonkwo', email:'jokonkwo@northwestern.edu', university:'Northwestern',     grad_year:2027, bio:'Architecture MArch student.',                 trust_score:88 },
-  'demo-user-3': { id:'demo-user-3', name:'Sofia Reyes',   email:'sreyes@umich.edu',          university:'U of Michigan',    grad_year:2026, bio:'Biology PhD candidate, plant mom.',           trust_score:95 },
-  'demo-user-4': { id:'demo-user-4', name:'Derek Huang',   email:'dhuang@ucla.edu',           university:'UCLA',             grad_year:2025, bio:'Finance MBA.',                                trust_score:79 },
-  'demo-user-5': { id:'demo-user-5', name:'Priya Menon',   email:'pmenon@columbia.edu',       university:'Columbia',         grad_year:2027, bio:'UX design intern this summer.',               trust_score:83 },
-  'demo-user-6': { id:'demo-user-6', name:'Aiden Walsh',   email:'awalsh@duke.edu',           university:'Duke',             grad_year:2026, bio:'MBA student, weekend cyclist.',               trust_score:97 },
-  'demo-user-7': { id:'demo-user-7', name:'Zara Ahmed',    email:'zahmed@uw.edu',             university:'U of Washington',  grad_year:2028, bio:'Software engineer intern, early bird.',       trust_score:86 },
-  'demo-user-8': { id:'demo-user-8', name:'Caleb Johnson', email:'cjohnson@gatech.edu',       university:'Georgia Tech',     grad_year:2026, bio:'CS senior, huge college football fan.',       trust_score:90 }
+  'demo-user-1': { id:'demo-user-1', name:'Maya Patel',    email:'mpatel@mit.edu',            university:'MIT',              grad_year:2026, bio:'CS grad student, coffee enthusiast.',         trust_score:92, is_edu:true },
+  'demo-user-2': { id:'demo-user-2', name:'James Okonkwo', email:'jokonkwo@northwestern.edu', university:'Northwestern',     grad_year:2027, bio:'Architecture MArch student.',                 trust_score:88, is_edu:true },
+  'demo-user-3': { id:'demo-user-3', name:'Sofia Reyes',   email:'sreyes@umich.edu',          university:'U of Michigan',    grad_year:2026, bio:'Biology PhD candidate, plant mom.',           trust_score:95, is_edu:true, id_verified:true },
+  'demo-user-4': { id:'demo-user-4', name:'Derek Huang',   email:'dhuang@ucla.edu',           university:'UCLA',             grad_year:2025, bio:'Finance MBA.',                                trust_score:79, is_edu:true },
+  'demo-user-5': { id:'demo-user-5', name:'Priya Menon',   email:'pmenon@columbia.edu',       university:'Columbia',         grad_year:2027, bio:'UX design intern this summer.',               trust_score:83, is_edu:true, linkedin_verified:true },
+  'demo-user-6': { id:'demo-user-6', name:'Aiden Walsh',   email:'awalsh@duke.edu',           university:'Duke',             grad_year:2026, bio:'MBA student, weekend cyclist.',               trust_score:97, is_edu:true, id_verified:true },
+  'demo-user-7': { id:'demo-user-7', name:'Zara Ahmed',    email:'zahmed@uw.edu',             university:'U of Washington',  grad_year:2028, bio:'Software engineer intern, early bird.',       trust_score:86, is_edu:true },
+  'demo-user-8': { id:'demo-user-8', name:'Caleb Johnson', email:'cjohnson@gatech.edu',       university:'Georgia Tech',     grad_year:2026, bio:'CS senior, huge college football fan.',       trust_score:90, is_edu:true, is_pro_email:false }
 };
 
 // ── Auth ──────────────────────────────────────────────────────

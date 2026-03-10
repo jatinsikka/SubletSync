@@ -160,6 +160,35 @@
 
     .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block}
 
+    /* ── Trust & Verification card ── */
+    .trust-verify-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;margin-bottom:24px;box-shadow:var(--sh)}
+    .tv-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+    .tv-title{font-family:var(--font-d);font-size:1.2rem;font-weight:600;color:var(--text)}
+    .tv-tier-wrap{display:flex;align-items:center;gap:8px}
+    .trust-badge-pill{display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;font-family:var(--font-b);padding:3px 10px;border-radius:20px;white-space:nowrap}
+    .tier-guest{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+    .tier-member{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+    .tier-student{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+    .tier-pro{background:var(--accent-light);color:var(--accent-dark);border:1px solid var(--accent)}
+    .tier-id{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+    .tv-score-row{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+    .tv-score-bar{flex:1;height:8px;background:var(--surface-alt);border-radius:4px;overflow:hidden}
+    .tv-score-fill{height:100%;border-radius:4px;transition:width 0.5s ease}
+    .tv-score-num{font-family:var(--font-b);font-size:13px;font-weight:700;white-space:nowrap}
+    .tv-hint{font-family:var(--font-b);font-size:12px;color:var(--accent);font-style:italic;margin-bottom:16px}
+    .tv-checklist{display:flex;flex-direction:column;gap:8px}
+    .tv-check-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface-alt)}
+    .tv-check-item.done{background:rgba(90,138,79,0.05);border-color:rgba(90,138,79,0.25)}
+    .tv-check-icon{font-size:16px;flex-shrink:0;width:22px;text-align:center}
+    .tv-check-body{flex:1;min-width:0}
+    .tv-check-body strong{display:block;font-family:var(--font-b);font-size:13px;font-weight:600;color:var(--text)}
+    .tv-check-body span{font-family:var(--font-b);font-size:11px;color:var(--muted)}
+    .tv-check-btn{font-family:var(--font-b);font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0}
+    .tv-btn-blue{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+    .tv-btn-orange{background:var(--accent-light);color:var(--accent);border:1px solid var(--border)}
+    .tv-btn-green{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+    .tv-btn-done{background:rgba(90,138,79,0.1);color:var(--accent3);border:1px solid rgba(90,138,79,0.25);cursor:default}
+
     @media(max-width:640px){
       .manage-grid{grid-template-columns:1fr}
       .page-wrap{padding:20px 16px 80px}
@@ -195,6 +224,22 @@
       <button class="btn-edit-profile" onclick="openModal()">✏️ Edit profile</button>
       <button class="btn-signout"      onclick="doSignOut()">Sign out</button>
     </div>
+  </div>
+
+  <!-- Trust & Verification card -->
+  <div class="trust-verify-card" id="trust-verify-card" style="display:none">
+    <div class="tv-header">
+      <div class="tv-title">Trust &amp; Verification</div>
+      <div class="tv-tier-wrap" id="tv-tier-badge"></div>
+    </div>
+    <div class="tv-score-row">
+      <div class="tv-score-bar">
+        <div class="tv-score-fill" id="tv-score-fill" style="width:0%;background:var(--accent)"></div>
+      </div>
+      <span class="tv-score-num" id="tv-score-num">0 / 100</span>
+    </div>
+    <div class="tv-hint">Higher trust score = more responses from listers</div>
+    <div class="tv-checklist" id="tv-checklist"></div>
   </div>
 
   <!-- Tabs -->
@@ -298,11 +343,76 @@ async function init() {
 
   document.getElementById('page-wrap').style.display = '';
   renderProfileHeader(currentUser);
+  renderTrustVerifyCard(currentUser);
   await loadMyListings();   // loads eagerly
 
   // Switch to tab from URL param
   const tab = new URLSearchParams(location.search).get('tab');
   if (tab && ['listings','saved','messages'].includes(tab)) switchTab(tab);
+}
+
+/* ── Trust & Verification card ── */
+function renderTrustVerifyCard(user) {
+  const card = document.getElementById('trust-verify-card');
+  card.style.display = '';
+
+  const tier  = getTrustTier(user);
+  const tObj  = TRUST_TIERS[tier];
+  const score = tObj.score;
+  const sc    = tObj.color;
+
+  document.getElementById('tv-tier-badge').innerHTML = renderTrustBadge(user);
+  const fill = document.getElementById('tv-score-fill');
+  fill.style.width      = score + '%';
+  fill.style.background = sc;
+  document.getElementById('tv-score-num').textContent = score + ' / 100';
+  document.getElementById('tv-score-num').style.color = sc;
+
+  const emailDone = true; // always confirmed
+  const phoneDone = !!user.phone_verified;
+  const linkedIn  = !!user.linkedin_verified;
+  const idVerified= !!user.id_verified;
+
+  document.getElementById('tv-checklist').innerHTML = `
+    <div class="tv-check-item done">
+      <div class="tv-check-icon">✅</div>
+      <div class="tv-check-body">
+        <strong>Email confirmed</strong>
+        <span>Your account email is verified</span>
+      </div>
+      <button class="tv-check-btn tv-btn-done" disabled>Done</button>
+    </div>
+    <div class="tv-check-item${phoneDone?' done':''}">
+      <div class="tv-check-icon">${phoneDone ? '✅' : '☐'}</div>
+      <div class="tv-check-body">
+        <strong>Phone verified</strong>
+        <span>Member status · +25 trust score</span>
+      </div>
+      ${phoneDone
+        ? '<button class="tv-check-btn tv-btn-done" disabled>Verified</button>'
+        : '<button class="tv-check-btn tv-btn-blue" onclick="alert(\'Phone verification coming soon!\')">Verify now</button>'}
+    </div>
+    <div class="tv-check-item${linkedIn?' done':''}">
+      <div class="tv-check-icon">${linkedIn ? '✅' : '☐'}</div>
+      <div class="tv-check-body">
+        <strong>LinkedIn connected</strong>
+        <span>Pro Verified badge · +35 trust score</span>
+      </div>
+      ${linkedIn
+        ? '<button class="tv-check-btn tv-btn-done" disabled>Connected</button>'
+        : '<button class="tv-check-btn tv-btn-orange" onclick="alert(\'LinkedIn connection coming soon!\')">Connect LinkedIn</button>'}
+    </div>
+    <div class="tv-check-item${idVerified?' done':''}">
+      <div class="tv-check-icon">${idVerified ? '✅' : '☐'}</div>
+      <div class="tv-check-body">
+        <strong>ID Verified — $3 one-time</strong>
+        <span>Gold badge · +50 trust score · Powered by Stripe Identity</span>
+      </div>
+      ${idVerified
+        ? '<button class="tv-check-btn tv-btn-done" disabled>Verified</button>'
+        : '<button class="tv-check-btn tv-btn-green" onclick="alert(\'Stripe Identity verification coming soon!\')">Get verified — $3</button>'}
+    </div>
+  `;
 }
 
 /* ── Profile header ── */

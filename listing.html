@@ -139,6 +139,23 @@
 
     .cc-trust-safe{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);text-align:center;line-height:1.65}
 
+    /* Trust badge pills */
+    .trust-badge-pill{display:inline-flex;align-items:center;gap:4px;font-size:0.72rem;font-weight:700;font-family:var(--font-b);padding:3px 10px;border-radius:20px;white-space:nowrap}
+    .tier-guest{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+    .tier-member{background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db}
+    .tier-student{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd}
+    .tier-pro{background:var(--accent-light);color:var(--accent-dark);border:1px solid var(--accent)}
+    .tier-id{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+
+    /* Escrow info box */
+    .escrow-info{display:flex;gap:12px;align-items:flex-start;background:#dcfce7;border:1px solid #86efac;border-radius:var(--r);padding:14px 16px;margin-top:16px}
+    .escrow-info strong{font-family:var(--font-b);font-size:0.85rem;color:#15803d;display:block}
+    .escrow-info p{font-family:var(--font-b);font-size:0.78rem;color:#166534;margin-top:2px;line-height:1.5}
+    .escrow-icon{font-size:1.2rem;flex-shrink:0;margin-top:2px}
+
+    /* Platform disclaimer */
+    .platform-disclaimer{font-family:var(--font-b);font-size:0.72rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:12px;margin-top:16px}
+
     /* Mobile contact bar */
     .mobile-contact-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:12px 20px;z-index:90;gap:10px;box-shadow:0 -4px 20px rgba(26,21,16,0.08)}
     .mobile-contact-bar .mc-price{font-family:var(--font-d);font-size:1.3rem;font-weight:700;color:var(--accent);white-space:nowrap}
@@ -239,6 +256,11 @@
     </div>
     <p>© 2026 SubletSync</p>
     <a href="browse.html">← Browse listings</a>
+  </div>
+  <div style="max-width:var(--max);margin:12px auto 0;padding:0 24px">
+    <div class="platform-disclaimer">
+      SubletSync is a marketplace platform connecting sublessors and sublessees. SubletSync is not a party to this sublease agreement and does not guarantee listing accuracy. Escrow powered by Stripe, Inc. Identity verification powered by Stripe Identity.
+    </div>
   </div>
 </footer>
 
@@ -350,7 +372,7 @@ function renderMain(l) {
     ${galleryHTML}
 
     <div class="listing-tags">
-      ${isEdu(lEmail) ? '<span class="tag tag-verified">✓ .edu Verified</span>' : ''}
+      ${renderTrustBadge(DEMO_USERS[l.lister_id] || {email: lEmail, is_edu: isEdu(lEmail)})}
       <span class="tag tag-type">${typeLabel}</span>
       <span class="tag tag-meta">${bedsLbl}</span>
       <span class="tag tag-meta">${l.bathrooms} Bath${l.bathrooms > 1 ? 's' : ''}</span>
@@ -398,7 +420,7 @@ function renderMain(l) {
         <div style="flex:1">
           <div class="lister-card-name">${escapeHtml(lName)}</div>
           <div class="lister-card-meta">
-            ${isEdu(lEmail) ? '<span class="edu-badge">.edu verified</span>' : ''}
+            ${renderTrustBadge(DEMO_USERS[l.lister_id] || {email: lEmail, is_edu: isEdu(lEmail)})}
             ${lUni ? `<span class="lister-uni">${escapeHtml(lUni)}${lGrad ? ' · Class of ' + lGrad : ''}</span>` : ''}
           </div>
           <div class="trust-row">
@@ -440,8 +462,8 @@ function renderContactCard(l) {
       </div>
       <div style="flex:1;min-width:0">
         <div class="cc-name">${escapeHtml(lName)}</div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px">
-          ${isEdu(lEmail) ? '<span class="edu-badge">.edu ✓</span>' : ''}
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px">
+          ${renderTrustBadge(DEMO_USERS[l.lister_id] || {email: lEmail, is_edu: isEdu(lEmail)})}
           ${lUni ? `<span style="font-size:11px;color:var(--muted)">${escapeHtml(lUni)}</span>` : ''}
         </div>
         <div class="trust-row" style="margin-top:6px">
@@ -474,9 +496,17 @@ function renderContactCard(l) {
       <div id="msg-feedback"></div>
     </div>
 
+    <div class="escrow-info">
+      <div class="escrow-icon">🔒</div>
+      <div>
+        <strong>Deposit held by Stripe</strong>
+        <p>Your deposit is held by Stripe, Inc. — not SubletSync. Released only on confirmed move-in. SubletSync charges a 5% platform fee.</p>
+      </div>
+    </div>
+
     <div class="cc-trust-safe">
-      🛡️ SubletSync verifies all .edu accounts.<br>
-      Never send money before signing a lease.
+      🛡️ Verified via .edu, LinkedIn, corporate email, or Stripe Identity.<br>
+      Never send money outside this platform.
     </div>
   `;
 }
